@@ -19,8 +19,15 @@ fi
 
 case "$EVENT" in
   Notification)
-    MSG=$(echo "$INPUT" | jq -r '.message // ""' 2>/dev/null | cut -c1-40)
-    STATUS="💬 ${MSG}"
+    MSG=$(echo "$INPUT" | jq -r '.message // ""' 2>/dev/null)
+    case "$MSG" in
+      *"waiting for your input"*)
+        STATUS="✓ 空闲"
+        ;;
+      *)
+        STATUS="💬 $(echo "$MSG" | cut -c1-40)"
+        ;;
+    esac
     ;;
   PermissionRequest)
     STATUS="🔒 等待授权"
