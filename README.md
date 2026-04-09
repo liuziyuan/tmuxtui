@@ -19,7 +19,7 @@ Interactive terminal UI for managing tmux sessions. Browse, create, rename, deta
 ## Install
 
 ```bash
-npm install -g tmuxtui
+npm install -g tmux-tui
 ```
 
 ## Usage
@@ -79,7 +79,7 @@ tmux 会话管理的交互式终端界面。无需记忆 tmux 命令，即可浏
 ## 安装
 
 ```bash
-npm install -g tmuxtui
+npm install -g tmux-tui
 ```
 
 ## 使用
