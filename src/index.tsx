@@ -13,7 +13,7 @@ function attachToSession(name: string) {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-// ── tumxtui init ──
+// ── tmuxtui init ──
 const args = process.argv.slice(2);
 
 if (args[0] === 'init') {
@@ -22,7 +22,7 @@ if (args[0] === 'init') {
 
   try {
     createSession(sessionName, sessionPath);
-    console.log(`${sessionName} 项目已经添加到 tumxtui 中`);
+    console.log(`${sessionName} 项目已经添加到 tmuxtui 中`);
   } catch {
     console.error(`创建 session 失败，可能已存在同名 session`);
     process.exit(1);

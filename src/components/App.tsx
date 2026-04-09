@@ -156,7 +156,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
     return (
       <Box flexDirection="column" paddingX={1}>
         <Box marginBottom={1}>
-          <Text bold color="white" backgroundColor="blue">{' tumxtui '}</Text>
+          <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
           <Text>{' '}new session</Text>
         </Box>
         <Box marginBottom={1} flexDirection="column">
@@ -182,7 +182,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
     return (
       <Box flexDirection="column" paddingX={1}>
         <Box marginBottom={1}>
-          <Text bold color="white" backgroundColor="blue">{' tumxtui '}</Text>
+          <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
           <Text>{' '}rename session</Text>
         </Box>
         <Box marginBottom={1}>
@@ -220,7 +220,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1}>
-        <Text bold color="white" backgroundColor="blue">{' tumxtui '}</Text>
+        <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
         <Text dimColor>{' '}tmux sessions ({sessions.length})</Text>
       </Box>
 

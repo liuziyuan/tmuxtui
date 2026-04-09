@@ -1,4 +1,4 @@
-# tumxtui
+# tmuxtui
 
 Interactive terminal UI for managing tmux sessions. Browse, create, rename, detach, and kill sessions without memorizing tmux commands.
 
@@ -19,7 +19,7 @@ Interactive terminal UI for managing tmux sessions. Browse, create, rename, deta
 ## Install
 
 ```bash
-npm install -g tumxtui
+npm install -g tmuxtui
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ npm install -g tumxtui
 ### Interactive TUI
 
 ```bash
-tumxtui
+tmuxtui
 ```
 
 Keyboard shortcuts:
@@ -47,18 +47,18 @@ When creating a new session, press `Tab` to switch between the name and path fie
 ### Quick register current project
 
 ```bash
-tumxtui init
+tmuxtui init
 ```
 
-Creates a new tmux session named after the current directory and opens it with tumxtui.
+Creates a new tmux session named after the current directory and opens it with tmuxtui.
 
 ---
 
-[English](#tumxtui) | [中文](#tumxtui-1)
+[English](#tmuxtui) | [中文](#tmuxtui-1)
 
 ---
 
-# tumxtui
+# tmuxtui
 
 tmux 会话管理的交互式终端界面。无需记忆 tmux 命令，即可浏览、创建、重命名、分离和销毁会话。
 
@@ -79,7 +79,7 @@ tmux 会话管理的交互式终端界面。无需记忆 tmux 命令，即可浏
 ## 安装
 
 ```bash
-npm install -g tumxtui
+npm install -g tmuxtui
 ```
 
 ## 使用
@@ -87,7 +87,7 @@ npm install -g tumxtui
 ### 交互式 TUI
 
 ```bash
-tumxtui
+tmuxtui
 ```
 
 快捷键：
@@ -107,10 +107,10 @@ tumxtui
 ### 快速注册当前项目
 
 ```bash
-tumxtui init
+tmuxtui init
 ```
 
-以当前目录名创建 tmux 会话，并通过 tumxtui 打开。
+以当前目录名创建 tmux 会话，并通过 tmuxtui 打开。
 
 ## License
 

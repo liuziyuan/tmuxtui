@@ -12,19 +12,19 @@ npm run dev
 npm run build
 
 # Run the CLI directly
-npx tsx bin/tumxtui.ts
-npx tsx bin/tumxtui.ts init   # register current dir as a new tmux session
+npx tsx bin/tmuxtui.ts
+npx tsx bin/tmuxtui.ts init   # register current dir as a new tmux session
 ```
 
 There are no tests or linter configured.
 
 ## Architecture
 
-**tumxtui** is an Ink (React-for-terminals) TUI that manages tmux sessions. It wraps tmux CLI commands and renders an interactive session picker.
+**tmuxtui** is an Ink (React-for-terminals) TUI that manages tmux sessions. It wraps tmux CLI commands and renders an interactive session picker.
 
 ### Data flow
 
-1. `bin/tumxtui.ts` — shebang entry; re-exports `src/index.tsx`
+1. `bin/tmuxtui.ts` — shebang entry; re-exports `src/index.tsx`
 2. `src/index.tsx` — two modes:
    - `init` subcommand: calls `createSession()` with `cwd` name/path and exits
    - TUI mode: renders the Ink `<App>`, awaits exit, then calls `tmux attach-session` (outside tmux) or `tmux switch-client` (inside tmux) based on `process.env.TMUX`

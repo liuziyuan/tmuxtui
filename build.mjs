@@ -5,7 +5,7 @@ await build({
   bundle: true,
   platform: 'node',
   target: 'node18',
-  outfile: 'dist/tumxtui.js',
+  outfile: 'dist/tmuxtui.js',
   banner: { js: '#!/usr/bin/env node\nimport{createRequire}from"module";const require=createRequire(import.meta.url);' },
   minify: true,
   format: 'esm',

@@ -4,7 +4,7 @@
   "description": "Terminal UI for tmux session management",
   "type": "module",
   "bin": {
-    "tumxtui": "dist/tumxtui.js"
+    "tmuxtui": "dist/tmuxtui.js"
   },
   "files": [
     "dist"
