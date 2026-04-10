@@ -7,6 +7,7 @@ import { createSession, killSession, renameSession, detachSession } from './serv
 import type { TmuxSession } from './types.js';
 
 function attachToSession(name: string) {
+  process.stdout.write(`\x1b]0;${name}\x07`);
   const cmd = process.env.TMUX
     ? `tmux switch-client -t ${name}`
     : `tmux attach-session -t ${name}`;
@@ -16,7 +17,7 @@ function attachToSession(name: string) {
 // ── tmuxtui init ──
 const args = process.argv.slice(2);
 
-if (args[0] === 'init') {
+if (args[0] === 'init' || args[0] === '-i') {
   const sessionName = basename(process.cwd());
   const sessionPath = process.cwd();
 
