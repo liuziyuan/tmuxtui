@@ -7,7 +7,7 @@ import { createSession, killSession, renameSession, detachSession } from './serv
 import type { TmuxSession } from './types.js';
 
 function attachToSession(name: string) {
-  process.stdout.write(`\x1b]0;${name}\x07`);
+  process.stdout.write(`\x1b]0;[tmux] ${name}\x07`);
   const cmd = process.env.TMUX
     ? `tmux switch-client -t ${name}`
     : `tmux attach-session -t ${name}`;
