@@ -79,10 +79,14 @@ export function listWindows(sessionName: string): TmuxWindow[] {
   }
 }
 
-export function newWindow(sessionName: string, windowName: string): void {
+export function newWindow(sessionName: string, windowName: string, path?: string): void {
   const safeSession = sessionName.replace(/'/g, "'\\''");
   const safeWindow = windowName.replace(/'/g, "'\\''");
-  execSync(`tmux new-window -d -t '${safeSession}' -n '${safeWindow}'`, { stdio: 'pipe' });
+  const safePath = path ? path.replace(/'/g, "'\\''") : '';
+  const cmd = safePath
+    ? `tmux new-window -d -t '${safeSession}' -n '${safeWindow}' -c '${safePath}'`
+    : `tmux new-window -d -t '${safeSession}' -n '${safeWindow}'`;
+  execSync(cmd, { stdio: 'pipe' });
 }
 
 export function renameWindow(sessionName: string, windowIndex: number, newName: string): void {
@@ -94,6 +98,105 @@ export function renameWindow(sessionName: string, windowIndex: number, newName: 
 export function killWindow(sessionName: string, windowIndex: number): void {
   const safeSession = sessionName.replace(/'/g, "'\\''");
   execSync(`tmux kill-window -t '${safeSession}':${windowIndex}`, { stdio: 'pipe' });
+}
+
+interface SplitStep {
+  pane: number;
+  horizontal: boolean;
+  percentage: number;
+}
+
+export interface PaneLayout {
+  id: number;
+  name: string;
+  panes: number;
+  preview: string[];
+  splits: SplitStep[];
+}
+
+export const PANE_LAYOUTS: PaneLayout[] = [
+  {
+    id: 1, name: 'Single', panes: 1,
+    preview: ['┌────────┐', '│   1    │', '└────────┘'],
+    splits: [],
+  },
+  {
+    id: 2, name: 'H-Split', panes: 2,
+    preview: ['┌───┬───┐', '│ 1 │ 2 │', '└───┴───┘'],
+    splits: [{ pane: 0, horizontal: true, percentage: 50 }],
+  },
+  {
+    id: 3, name: 'V-Split', panes: 2,
+    preview: ['┌───────┐', '│   1   │', '├───────┤', '│   2   │', '└───────┘'],
+    splits: [{ pane: 0, horizontal: false, percentage: 50 }],
+  },
+  {
+    id: 4, name: 'IDE', panes: 2,
+    preview: ['┌──┬────┐', '│1 │ 2  │', '└──┴────┘'],
+    splits: [{ pane: 0, horizontal: true, percentage: 75 }],
+  },
+  {
+    id: 5, name: 'IDE+Term', panes: 3,
+    preview: ['┌──┬────┐', '│  │ 2  │', '│1 ├────┤', '│  │ 3  │', '└──┴────┘'],
+    splits: [
+      { pane: 0, horizontal: true, percentage: 75 },
+      { pane: 1, horizontal: false, percentage: 50 },
+    ],
+  },
+  {
+    id: 6, name: 'Triple', panes: 3,
+    preview: ['┌──┬──┬──┐', '│1 │2 │3 │', '└──┴──┴──┘'],
+    splits: [
+      { pane: 0, horizontal: true, percentage: 66 },
+      { pane: 1, horizontal: true, percentage: 50 },
+    ],
+  },
+  {
+    id: 7, name: 'IDE+Side', panes: 3,
+    preview: ['┌─┬──┬─┐', '│1│2 │3│', '└─┴──┴─┘'],
+    splits: [
+      { pane: 0, horizontal: true, percentage: 80 },
+      { pane: 1, horizontal: true, percentage: 25 },
+    ],
+  },
+  {
+    id: 8, name: 'Quad', panes: 4,
+    preview: ['┌──┬──┐', '│1 │2 │', '├──┼──┤', '│3 │4 │', '└──┴──┘'],
+    splits: [
+      { pane: 0, horizontal: true, percentage: 50 },
+      { pane: 0, horizontal: false, percentage: 50 },
+      { pane: 1, horizontal: false, percentage: 50 },
+    ],
+  },
+  {
+    id: 9, name: 'IDE Pro', panes: 4,
+    preview: ['┌──┬─────┐', '│  │  2  │', '│1 ├──┬──┤', '│  │ 3│4 │', '└──┴──┴──┘'],
+    splits: [
+      { pane: 0, horizontal: true, percentage: 75 },
+      { pane: 1, horizontal: false, percentage: 40 },
+      { pane: 2, horizontal: true, percentage: 50 },
+    ],
+  },
+];
+
+export function initPanes(sessionName: string, windowIndex: number, layoutId: number): void {
+  const layout = PANE_LAYOUTS.find((l) => l.id === layoutId);
+  if (!layout || layout.splits.length === 0) return;
+
+  const safeSession = sessionName.replace(/'/g, "'\\''");
+  const base = `'${safeSession}':${windowIndex}`;
+
+  let paneBase = 0;
+  try {
+    const out = execSync('tmux show-option -g pane-base-index', { encoding: 'utf-8' }).trim();
+    paneBase = parseInt(out.split(' ').pop() || '0', 10);
+  } catch { /* default 0 */ }
+
+  for (const step of layout.splits) {
+    const dir = step.horizontal ? '-h' : '-v';
+    const target = `${base}.${paneBase + step.pane}`;
+    execSync(`tmux split-window -t ${target} ${dir} -p ${step.percentage}`, { stdio: 'pipe' });
+  }
 }
 
 export function formatTime(epoch: number): string {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
-import { listSessions, listWindows, newWindow, renameWindow, killWindow, formatTime } from '../services/tmuxService.js';
+import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime } from '../services/tmuxService.js';
 import type { TmuxSession, TmuxWindow } from '../types.js';
 
 type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config';
-type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete';
+type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes';
 
 interface SessionViewProps {
   interactive: boolean;
@@ -30,6 +30,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
   const [configWindows, setConfigWindows] = useState<TmuxWindow[]>([]);
   const [configSelected, setConfigSelected] = useState(0);
   const [configSubMode, setConfigSubMode] = useState<ConfigSubMode>('list');
+  const [layoutSelected, setLayoutSelected] = useState(0);
 
   const refresh = () => {
     const updated = listSessions();
@@ -145,7 +146,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
               return;
             }
             try {
-              newWindow(configSession!.name, inputValue.trim());
+              newWindow(configSession!.name, inputValue.trim(), configSession!.path);
             } catch (e: any) {
               setError(e.message);
               return;
@@ -225,6 +226,32 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           return;
         }
 
+        // config/init-panes sub-mode
+        if (configSubMode === 'init-panes') {
+          if (key.escape) {
+            setConfigSubMode('list');
+            setError('');
+            return;
+          }
+          if (key.return) {
+            try {
+              initPanes(configSession!.name, configWindows[configSelected].index, PANE_LAYOUTS[layoutSelected].id);
+            } catch (e: any) {
+              setError(e.message);
+              return;
+            }
+            refreshConfigWindows();
+            setConfigSubMode('list');
+            return;
+          }
+          if (key.upArrow) {
+            setLayoutSelected((i) => (i - 1 + PANE_LAYOUTS.length) % PANE_LAYOUTS.length);
+          } else if (key.downArrow) {
+            setLayoutSelected((i) => (i + 1) % PANE_LAYOUTS.length);
+          }
+          return;
+        }
+
         // config/list sub-mode
         if (key.escape) {
           refresh();
@@ -246,6 +273,13 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
         }
         if (input === 'd' && configWindows.length > 0) {
           setConfigSubMode('confirm-delete');
+          return;
+        }
+        const canInitPanes = configWindows.length > 0 && configWindows[configSelected].panes === 1 && !configWindows[configSelected].active;
+        if (input === 'i' && canInitPanes) {
+          setLayoutSelected(0);
+          setConfigSubMode('init-panes');
+          setError('');
           return;
         }
         if (key.upArrow) {
@@ -427,6 +461,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
     }
 
     // config/list sub-mode
+    if (configSubMode === 'list') {
     return (
       <Box flexDirection="column" paddingX={1}>
         <Box marginBottom={1}>
@@ -458,7 +493,48 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
             <Text color="green" bold>n</Text><Text dimColor> new | </Text>
             <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
             <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
+            {configWindows.length > 0 && configWindows[configSelected].panes === 1 && !configWindows[configSelected].active && (
+              <><Text color="cyan" bold>i</Text><Text dimColor> init panes | </Text></>
+            )}
             <Text dimColor>esc back</Text>
+          </Box>
+        )}
+      </Box>
+    );
+    }
+
+    // config/init-panes sub-mode
+    const selectedLayout = PANE_LAYOUTS[layoutSelected];
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box marginBottom={1}>
+          <Text bold color="white" backgroundColor="magenta">{' config '}</Text>
+          <Text>{' '}{configWindows[configSelected]?.name}</Text>
+          <Text dimColor>{'  init panes'}</Text>
+        </Box>
+
+        {PANE_LAYOUTS.map((layout, i) => (
+          <Box key={layout.id}>
+            <Text>{i === layoutSelected ? '▸ ' : '  '}</Text>
+            <Text bold color={i === layoutSelected ? 'cyan' : 'white'}>
+              {`${layout.id}. ${layout.name.padEnd(12)}`}
+            </Text>
+            <Text dimColor>{`${layout.panes} pane${layout.panes !== 1 ? 's' : ''}`}</Text>
+          </Box>
+        ))}
+
+        <Box marginTop={1} flexDirection="column">
+          <Text dimColor>Preview:</Text>
+          {selectedLayout.preview.map((line, i) => (
+            <Text key={i} color="cyan">{line}</Text>
+          ))}
+        </Box>
+
+        {error && <Box marginTop={1}><Text color="red">{error}</Text></Box>}
+
+        {interactive && (
+          <Box marginTop={1}>
+            <Text dimColor>↑↓ select | ↵ apply | esc cancel</Text>
           </Box>
         )}
       </Box>
