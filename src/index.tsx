@@ -23,9 +23,9 @@ if (args[0] === 'init' || args[0] === '-i') {
 
   try {
     createSession(sessionName, sessionPath);
-    console.log(`${sessionName} 项目已经添加到 tmuxtui 中`);
+    console.log(`${sessionName} project has been added to tmuxtui`);
   } catch {
-    console.error(`创建 session 失败，可能已存在同名 session`);
+    console.error(`Failed to create session. A session with the same name may already exist.`);
     process.exit(1);
   }
   process.exit(0);
