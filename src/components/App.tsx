@@ -235,7 +235,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           }
           if (key.return) {
             try {
-              initPanes(configSession!.name, configWindows[configSelected].index, PANE_LAYOUTS[layoutSelected].id);
+              initPanes(configSession!.name, configWindows[configSelected].index, PANE_LAYOUTS[layoutSelected].id, configSession!.path);
             } catch (e: any) {
               setError(e.message);
               return;
@@ -275,7 +275,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           setConfigSubMode('confirm-delete');
           return;
         }
-        const canInitPanes = configWindows.length > 0 && configWindows[configSelected].panes === 1 && !configWindows[configSelected].active;
+        const canInitPanes = configWindows.length > 0 && configWindows[configSelected].panes === 1;
         if (input === 'i' && canInitPanes) {
           setLayoutSelected(0);
           setConfigSubMode('init-panes');
@@ -493,7 +493,7 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
             <Text color="green" bold>n</Text><Text dimColor> new | </Text>
             <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
             <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
-            {configWindows.length > 0 && configWindows[configSelected].panes === 1 && !configWindows[configSelected].active && (
+            {configWindows.length > 0 && configWindows[configSelected].panes === 1 && (
               <><Text color="cyan" bold>i</Text><Text dimColor> init panes | </Text></>
             )}
             <Text dimColor>esc back</Text>

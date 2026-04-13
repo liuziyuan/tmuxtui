@@ -1,3 +1,5 @@
+declare const __APP_VERSION__: string | undefined;
+
 import React from 'react';
 import { render } from 'ink';
 import { execSync } from 'child_process';
@@ -17,6 +19,12 @@ function attachToSession(name: string) {
 // ── tmuxtui init ──
 const args = process.argv.slice(2);
 
+if (args[0] === 'version' || args[0] === '-v' || args[0] === '--version') {
+  const ver = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+  console.log(ver);
+  process.exit(0);
+}
+
 if (args[0] === 'init' || args[0] === '-i') {
   const sessionName = basename(process.cwd());
   const sessionPath = process.cwd();
@@ -29,6 +37,11 @@ if (args[0] === 'init' || args[0] === '-i') {
     process.exit(1);
   }
   process.exit(0);
+}
+
+if (args[0] !== undefined) {
+  console.error(`Unknown argument: ${args[0]}`);
+  process.exit(1);
 }
 
 // ── TUI mode ──

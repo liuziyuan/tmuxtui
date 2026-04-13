@@ -179,12 +179,13 @@ export const PANE_LAYOUTS: PaneLayout[] = [
   },
 ];
 
-export function initPanes(sessionName: string, windowIndex: number, layoutId: number): void {
+export function initPanes(sessionName: string, windowIndex: number, layoutId: number, path?: string): void {
   const layout = PANE_LAYOUTS.find((l) => l.id === layoutId);
   if (!layout || layout.splits.length === 0) return;
 
   const safeSession = sessionName.replace(/'/g, "'\\''");
   const base = `'${safeSession}':${windowIndex}`;
+  const cFlag = path ? ` -c '${path.replace(/'/g, "'\\''")}'` : '';
 
   let paneBase = 0;
   try {
@@ -195,7 +196,7 @@ export function initPanes(sessionName: string, windowIndex: number, layoutId: nu
   for (const step of layout.splits) {
     const dir = step.horizontal ? '-h' : '-v';
     const target = `${base}.${paneBase + step.pane}`;
-    execSync(`tmux split-window -t ${target} ${dir} -p ${step.percentage}`, { stdio: 'pipe' });
+    execSync(`tmux split-window -t ${target} ${dir} -p ${step.percentage}${cFlag}`, { stdio: 'pipe' });
   }
 }
 
