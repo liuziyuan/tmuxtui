@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
-import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime } from '../services/tmuxService.js';
+import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime, getSessionDetail, moveWindow } from '../services/tmuxService.js';
+import { loadFavorites, toggleFavorite } from '../services/favoritesService.js';
 import type { TmuxSession, TmuxWindow } from '../types.js';
 
-type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config';
-type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes';
+type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config' | 'search' | 'detail' | 'confirm-batch-kill';
+type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes' | 'move';
 
 interface SessionViewProps {
   interactive: boolean;
@@ -15,8 +16,18 @@ interface SessionViewProps {
   onDetach?: (name: string) => void;
 }
 
-function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDetach }: SessionViewProps) {
+function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, onRename, onDetach }: SessionViewProps & { favoritesOnly?: boolean }) {
   const { exit } = useApp();
+
+  function fuzzyMatch(query: string, text: string): boolean {
+    const q = query.toLowerCase();
+    const t = text.toLowerCase();
+    let qi = 0;
+    for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+      if (t[ti] === q[qi]) qi++;
+    }
+    return qi === q.length;
+  }
   const [sessions, setSessions] = useState(listSessions);
   const [selected, setSelected] = useState(0);
   const [mode, setMode] = useState<Mode>('list');
@@ -32,11 +43,34 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
   const [configSubMode, setConfigSubMode] = useState<ConfigSubMode>('list');
   const [layoutSelected, setLayoutSelected] = useState(0);
 
+  // search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // detail state
+  const [detailSession, setDetailSession] = useState<TmuxSession | null>(null);
+  const [detailWindows, setDetailWindows] = useState<TmuxWindow[]>([]);
+  const [detailSelected, setDetailSelected] = useState(0);
+
+  // move state
+  const [moveTargets, setMoveTargets] = useState<TmuxSession[]>([]);
+  const [moveSelected, setMoveSelected] = useState(0);
+
+  // favorites state
+  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(favoritesOnly ?? false);
+
+  // batch mark state
+  const [marked, setMarked] = useState<Set<string>>(new Set());
+
   const refresh = () => {
     const updated = listSessions();
     setSessions(updated);
     setSelected((i) => Math.min(i, Math.max(0, updated.length - 1)));
   };
+
+  const displayedSessions = showFavoritesOnly
+    ? sessions.filter((s) => favorites.has(s.name))
+    : sessions;
 
   const refreshConfigWindows = () => {
     if (!configSession) return;
@@ -123,9 +157,72 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           return;
         }
         if (input === 'y' || key.return) {
-          onKill?.(sessions[selected].name);
+          onKill?.(displayedSessions[selected].name);
           refresh();
           setMode('list');
+        }
+        return;
+      }
+
+      // ── confirm-batch-kill mode ──
+      if (mode === 'confirm-batch-kill') {
+        if (key.escape || input === 'n') {
+          setMode('list');
+          return;
+        }
+        if (input === 'y' || key.return) {
+          for (const name of marked) { onKill?.(name); }
+          setMarked(new Set());
+          refresh();
+          setMode('list');
+        }
+        return;
+      }
+
+      // ── search mode ──
+      if (mode === 'search') {
+        if (key.escape) {
+          setMode('list');
+          setSearchQuery('');
+          return;
+        }
+        if (key.return) {
+          const filtered = sessions.filter((s) => fuzzyMatch(searchQuery, s.name));
+          if (filtered.length > 0) {
+            onSelect?.(filtered[selected]);
+            exit();
+          }
+          return;
+        }
+        if (key.backspace || key.delete) {
+          setSearchQuery((v) => v.slice(0, -1));
+          return;
+        }
+        if (key.upArrow || key.downArrow) {
+          const filtered = sessions.filter((s) => fuzzyMatch(searchQuery, s.name));
+          if (key.upArrow) setSelected((i) => (i - 1 + filtered.length) % filtered.length);
+          else setSelected((i) => (i + 1) % filtered.length);
+          return;
+        }
+        if (input && !key.ctrl && !key.meta) {
+          setSearchQuery((v) => v + input);
+          setSelected(0);
+        }
+        return;
+      }
+
+      // ── detail mode ──
+      if (mode === 'detail') {
+        if (key.escape) {
+          setMode('list');
+          setDetailSession(null);
+          setDetailWindows([]);
+          return;
+        }
+        if (key.upArrow) {
+          setDetailSelected((i) => (i - 1 + detailWindows.length) % detailWindows.length);
+        } else if (key.downArrow) {
+          setDetailSelected((i) => (i + 1) % detailWindows.length);
         }
         return;
       }
@@ -252,6 +349,35 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           return;
         }
 
+        // config/move sub-mode
+        if (configSubMode === 'move') {
+          if (key.escape) {
+            setConfigSubMode('list');
+            setMoveTargets([]);
+            return;
+          }
+          if (key.return && moveTargets.length > 0) {
+            try {
+              moveWindow(configSession!.name, configWindows[configSelected].index, moveTargets[moveSelected].name);
+            } catch (e: any) {
+              setError(e.message);
+              setConfigSubMode('list');
+              setMoveTargets([]);
+              return;
+            }
+            refreshConfigWindows();
+            setConfigSubMode('list');
+            setMoveTargets([]);
+            return;
+          }
+          if (key.upArrow) {
+            setMoveSelected((i) => (i - 1 + moveTargets.length) % moveTargets.length);
+          } else if (key.downArrow) {
+            setMoveSelected((i) => (i + 1) % moveTargets.length);
+          }
+          return;
+        }
+
         // config/list sub-mode
         if (key.escape) {
           refresh();
@@ -282,6 +408,18 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
           setError('');
           return;
         }
+        if (input === 'm' && configWindows.length > 0) {
+          const targets = listSessions().filter((s) => s.name !== configSession!.name);
+          if (targets.length === 0) {
+            setError('No other sessions to move to');
+            return;
+          }
+          setMoveTargets(targets);
+          setMoveSelected(0);
+          setConfigSubMode('move');
+          setError('');
+          return;
+        }
         if (key.upArrow) {
           setConfigSelected((i) => (i - 1 + configWindows.length) % configWindows.length);
         } else if (key.downArrow) {
@@ -292,6 +430,50 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
 
       // ── list mode ──
       if (input === 'q') { exit(); return; }
+      if (input === 'R') { refresh(); return; }
+      if (input === 's' && displayedSessions.length > 0) {
+        setFavorites(toggleFavorite(displayedSessions[selected].name, favorites));
+        return;
+      }
+      if (input === 'f') {
+        setShowFavoritesOnly((v) => !v);
+        setSelected(0);
+        return;
+      }
+      if (key.tab && displayedSessions.length > 0) {
+        setMarked((prev) => {
+          const next = new Set(prev);
+          const name = displayedSessions[selected].name;
+          next.has(name) ? next.delete(name) : next.add(name);
+          return next;
+        });
+        setSelected((i) => (i + 1) % displayedSessions.length);
+        return;
+      }
+      if (input === 'X' && marked.size > 0) {
+        for (const name of marked) { onDetach?.(name); }
+        setMarked(new Set());
+        refresh();
+        return;
+      }
+      if (input === 'D' && marked.size > 0) {
+        setMode('confirm-batch-kill');
+        return;
+      }
+      if (input === '/') {
+        setMode('search');
+        setSearchQuery('');
+        setSelected(0);
+        return;
+      }
+      if (input === 'i' && displayedSessions.length > 0) {
+        const s = displayedSessions[selected];
+        setDetailSession(s);
+        setDetailWindows(getSessionDetail(s.name));
+        setDetailSelected(0);
+        setMode('detail');
+        return;
+      }
       if (input === 'n') {
         setMode('new');
         setFocusField('name');
@@ -300,23 +482,23 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
         setError('');
         return;
       }
-      if (input === 'r' && sessions.length > 0) {
+      if (input === 'r' && displayedSessions.length > 0) {
         setMode('rename');
-        setinputValue(sessions[selected].name);
+        setinputValue(displayedSessions[selected].name);
         setError('');
         return;
       }
-      if (input === 'x' && sessions.length > 0) {
-        onDetach?.(sessions[selected].name);
+      if (input === 'x' && displayedSessions.length > 0) {
+        onDetach?.(displayedSessions[selected].name);
         refresh();
         return;
       }
-      if (input === 'd' && sessions.length > 0) {
+      if (input === 'd' && displayedSessions.length > 0) {
         setMode('confirm-kill');
         return;
       }
-      if (input === 'c' && sessions.length > 0) {
-        const s = sessions[selected];
+      if (input === 'c' && displayedSessions.length > 0) {
+        const s = displayedSessions[selected];
         setConfigSession(s);
         setConfigWindows(listWindows(s.name));
         setConfigSelected(0);
@@ -326,11 +508,11 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
         return;
       }
       if (key.upArrow) {
-        setSelected((i) => (i - 1 + sessions.length) % sessions.length);
+        setSelected((i) => (i - 1 + displayedSessions.length) % displayedSessions.length);
       } else if (key.downArrow) {
-        setSelected((i) => (i + 1) % sessions.length);
-      } else if (key.return && sessions.length > 0) {
-        onSelect?.(sessions[selected]);
+        setSelected((i) => (i + 1) % displayedSessions.length);
+      } else if (key.return && displayedSessions.length > 0) {
+        onSelect?.(displayedSessions[selected]);
         exit();
       }
     });
@@ -381,8 +563,8 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
     );  }
 
   // ── Render: confirm-kill ──
-  if (mode === 'confirm-kill' && sessions.length > 0) {
-    const target = sessions[selected];
+  if (mode === 'confirm-kill' && displayedSessions.length > 0) {
+    const target = displayedSessions[selected];
     return (
       <Box flexDirection="column" paddingX={1}>
         <Box marginBottom={1}>
@@ -396,6 +578,130 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
         <Box>
           <Text dimColor>y confirm | n/esc cancel</Text>
         </Box>
+      </Box>
+    );
+  }
+
+  // ── Render: confirm-batch-kill ──
+  if (mode === 'confirm-batch-kill' && marked.size > 0) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box marginBottom={1}>
+          <Text bold color="white" backgroundColor="red">{' ⚠ batch delete '}</Text>
+        </Box>
+        <Box marginBottom={1}>
+          <Text>Kill </Text>
+          <Text bold color="red">{marked.size}</Text>
+          <Text> sessions?</Text>
+        </Box>
+        {[...marked].map((name) => (
+          <Box key={name} marginLeft={2}>
+            <Text color="red">{'- '}{name}</Text>
+          </Box>
+        ))}
+        <Box marginTop={1}>
+          <Text dimColor>y confirm | n/esc cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // ── Render: search ──
+  if (mode === 'search') {
+    const filtered = sessions.filter((s) => fuzzyMatch(searchQuery, s.name));
+    const displaySelected = Math.min(selected, Math.max(0, filtered.length - 1));
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box marginBottom={1}>
+          <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
+          <Text>{' '}</Text>
+          <Text color="cyan">/</Text>
+          <Text color="cyan">{searchQuery}</Text>
+          <Text backgroundColor="cyan"> </Text>
+          <Text dimColor>{`  ${filtered.length}/${sessions.length}`}</Text>
+        </Box>
+        {filtered.length === 0 ? (
+          <Text dimColor>No matching sessions</Text>
+        ) : (
+          <Box flexDirection="column">
+            <Box>
+              <Text>{'  '}</Text>
+              <Text dimColor>{'NAME'.padEnd(22)}</Text>
+              <Text dimColor>{'WINS'.padEnd(7)}</Text>
+              <Text dimColor>{'STATUS'.padEnd(8)}</Text>
+              <Text dimColor>{'  LAST USED'}</Text>
+            </Box>
+            {filtered.map((s, i) => (
+              <Box key={s.sessionId} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text>{i === displaySelected ? '▸ ' : '  '}</Text>
+                  <Text bold color={i === displaySelected ? 'cyan' : (s.attached ? 'green' : 'white')}>
+                    {(s.name.length > 20 ? s.name.slice(0, 17) + '...' : s.name).padEnd(22)}
+                  </Text>
+                  <Text dimColor>
+                    {`${s.windows} win${s.windows !== 1 ? 's' : ''}`.padEnd(7)}
+                  </Text>
+                  <Text color="yellow">{s.attached ? 'attached' : '        '}</Text>
+                  <Text dimColor>{'  '}{formatTime(s.lastAttached)}</Text>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+        {interactive && (
+          <Box marginTop={1}>
+            <Text dimColor>↑↓ select | ↵ attach | esc cancel</Text>
+          </Box>
+        )}
+      </Box>
+    );
+  }
+
+  // ── Render: detail ──
+  if (mode === 'detail' && detailSession) {
+    const ds = detailSelected;
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box marginBottom={1}>
+          <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
+          <Text>{' '}</Text>
+          <Text bold color="cyan">{detailSession.name}</Text>
+          <Text dimColor>{'  '}{detailSession.path.replace(process.env.HOME || '', '~')}</Text>
+        </Box>
+
+        {detailWindows.length === 0 ? (
+          <Text dimColor>No windows found</Text>
+        ) : (
+          detailWindows.map((w, i) => (
+            <Box key={w.index} flexDirection="column" marginBottom={1}>
+              <Box>
+                <Text>{i === ds ? '▸ ' : '  '}</Text>
+                <Text bold color={i === ds ? 'cyan' : (w.active ? 'green' : 'white')}>
+                  {w.name}
+                </Text>
+                <Text dimColor>{`  ${w.panes} pane${w.panes !== 1 ? 's' : ''}`}</Text>
+                <Text color="yellow">{w.active ? '  active' : ''}</Text>
+              </Box>
+              {i === ds && w.paneList && w.paneList.map((p) => (
+                <Box key={p.index} marginLeft={3}>
+                  <Text dimColor>{`[${p.index}] `}</Text>
+                  <Text color={p.active ? 'green' : 'white'}>
+                    {p.currentCommand}
+                  </Text>
+                  {p.currentPath && (
+                    <Text dimColor>{`  ${p.currentPath.replace(process.env.HOME || '', '~')}`}</Text>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          ))
+        )}
+
+        {interactive && (
+          <Box marginTop={1}>
+            <Text dimColor>↑↓ select | esc back</Text>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -496,11 +802,45 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
             {configWindows.length > 0 && configWindows[configSelected].panes === 1 && (
               <><Text color="cyan" bold>i</Text><Text dimColor> init panes | </Text></>
             )}
+            {configWindows.length > 0 && (<><Text color="blue" bold>m</Text><Text dimColor> move | </Text></>)}
             <Text dimColor>esc back</Text>
           </Box>
         )}
       </Box>
     );
+    }
+
+    // config/move sub-mode
+    if (configSubMode === 'move') {
+      return (
+        <Box flexDirection="column" paddingX={1}>
+          <Box marginBottom={1}>
+            <Text bold color="white" backgroundColor="magenta">{' config '}</Text>
+            <Text>{' '}move window </Text>
+            <Text bold color="cyan">{configWindows[configSelected]?.name}</Text>
+            <Text>{' to:'}</Text>
+          </Box>
+
+          {moveTargets.map((s, i) => (
+            <Box key={s.sessionId}>
+              <Text>{i === moveSelected ? '▸ ' : '  '}</Text>
+              <Text bold color={i === moveSelected ? 'cyan' : 'white'}>
+                {s.name}
+              </Text>
+              <Text dimColor>{`  ${s.windows} win${s.windows !== 1 ? 's' : ''}`}</Text>
+              <Text color="yellow">{s.attached ? '  attached' : ''}</Text>
+            </Box>
+          ))}
+
+          {error && <Box marginTop={1}><Text color="red">{error}</Text></Box>}
+
+          {interactive && (
+            <Box marginTop={1}>
+              <Text dimColor>↑↓ select | ↵ move | esc cancel</Text>
+            </Box>
+          )}
+        </Box>
+      );
     }
 
     // config/init-panes sub-mode
@@ -542,45 +882,72 @@ function SessionView({ interactive, onSelect, onCreate, onKill, onRename, onDeta
   }
 
   // ── Render: list ──
+  const safeSelected = Math.min(selected, Math.max(0, displayedSessions.length - 1));
+
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1}>
         <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
-        <Text dimColor>{' '}tmux sessions ({sessions.length})</Text>
+        <Text dimColor>{' '}tmux sessions ({displayedSessions.length}{showFavoritesOnly ? ' ★' : ''}/{sessions.length})</Text>
       </Box>
 
-      {sessions.length === 0 ? (
-        <Text dimColor>No tmux sessions found</Text>
+      {displayedSessions.length === 0 ? (
+        <Text dimColor>{showFavoritesOnly ? 'No favorite sessions' : 'No tmux sessions found'}</Text>
       ) : (
-        sessions.map((s, i) => (
-          <Box key={s.sessionId} flexDirection="column" marginBottom={1}>
-            <Box>
-              <Text>{i === selected ? '▸ ' : '  '}</Text>
-              <Text bold color={i === selected ? 'cyan' : (s.attached ? 'green' : 'white')}>
-                {s.name.padEnd(18)}
-              </Text>
-              <Text dimColor>
-                {s.windows} win{s.windows !== 1 ? 's' : ''}
-              </Text>
-              <Text color="yellow">{s.attached ? '  attached  ' : '            '}</Text>
-              <Text dimColor>{formatTime(s.created)}</Text>
-            </Box>
-            {s.path && (
-              <Text dimColor>{'    '}{s.path.replace(process.env.HOME || '', '~')}</Text>
-            )}
+        <Box flexDirection="column">
+          <Box>
+            <Text>{'  '}</Text>
+            <Text dimColor>{'NAME'.padEnd(22)}</Text>
+            <Text dimColor>{'WINS'.padEnd(7)}</Text>
+            <Text dimColor>{'STATUS'.padEnd(8)}</Text>
+            <Text dimColor>{'  LAST USED'}</Text>
           </Box>
-        ))
+          {displayedSessions.map((s, i) => (
+            <Box key={s.sessionId} flexDirection="column" marginBottom={1}>
+              <Box>
+                <Text>{marked.has(s.name) ? '☑' : '☐'}</Text>
+                <Text>{favorites.has(s.name) ? '★' : ' '}</Text>
+                <Text>{i === safeSelected ? '▸' : ' '}</Text>
+                <Text bold color={i === safeSelected ? 'cyan' : (s.attached ? 'green' : 'white')}>
+                  {(s.name.length > 20 ? s.name.slice(0, 17) + '...' : s.name).padEnd(22)}
+                </Text>
+                <Text dimColor>
+                  {`${s.windows} win${s.windows !== 1 ? 's' : ''}`.padEnd(7)}
+                </Text>
+                <Text color="yellow">{s.attached ? 'attached' : '        '}</Text>
+                <Text dimColor>{'  '}{formatTime(s.lastAttached)}</Text>
+              </Box>
+              {s.path && (
+                <Text dimColor>{'    '}{s.path.replace(process.env.HOME || '', '~')}</Text>
+              )}
+            </Box>
+          ))}
+        </Box>
       )}
 
       {interactive && (
-        <Box marginTop={1}>
-          <Text dimColor>↑↓ select | ↵ attach | </Text>
-          <Text color="green" bold>n</Text><Text dimColor> new | </Text>
-          <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
-          <Text color="blue" bold>x</Text><Text dimColor> detach | </Text>
-          <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
-          <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
-          <Text dimColor>q quit</Text>
+        <Box marginTop={1} flexDirection="column">
+            <Box>
+              <Text dimColor>↑↓ select | ↵ attach | </Text>
+              <Text color="cyan" bold>/</Text><Text dimColor> search | </Text>
+              <Text color="green" bold>n</Text><Text dimColor> new | </Text>
+              <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
+              <Text color="white" bold>R</Text><Text dimColor> refresh | </Text>
+              <Text dimColor>q quit</Text>
+            </Box>
+            <Box>
+              <Text color="blue" bold>x</Text><Text dimColor> detach | </Text>
+              <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
+              <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
+              <Text color="white" bold>i</Text><Text dimColor> info | </Text>
+              <Text color="yellow" bold>s</Text><Text dimColor> star | </Text>
+              <Text color="cyan" bold>f</Text><Text dimColor> filter</Text>
+            </Box>
+            <Box>
+              <Text color="white" bold>Tab</Text><Text dimColor> mark | </Text>
+              <Text color="blue" bold>X</Text><Text dimColor> batch detach | </Text>
+              <Text color="red" bold>D</Text><Text dimColor> batch kill</Text>
+            </Box>
         </Box>
       )}
     </Box>
@@ -593,16 +960,19 @@ export default function App({
   onKill,
   onRename,
   onDetach,
+  favoritesOnly,
 }: {
   onSelect?: (session: TmuxSession) => void;
   onCreate?: (name: string, path: string) => void;
   onKill?: (name: string) => void;
   onRename?: (oldName: string, newName: string) => void;
   onDetach?: (name: string) => void;
+  favoritesOnly?: boolean;
 }) {
   return (
     <SessionView
       interactive={!!process.stdin.isTTY}
+      favoritesOnly={favoritesOnly}
       onSelect={onSelect}
       onCreate={onCreate}
       onKill={onKill}

@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import type { TmuxSession, TmuxWindow } from '../types.js';
+import type { TmuxSession, TmuxWindow, TmuxPane } from '../types.js';
 
 export function listSessions(): TmuxSession[] {
   const format = '#{session_name}\t#{session_windows}\t#{session_created}\t#{session_attached}\t#{session_id}\t#{session_path}\t#{session_last_attached}';
@@ -25,7 +25,10 @@ export function listSessions(): TmuxSession[] {
       };
     });
 
-    return sessions.sort((a, b) => b.lastAttached - a.lastAttached);
+    return sessions.sort((a, b) => {
+      if (a.attached !== b.attached) return a.attached ? -1 : 1;
+      return b.lastAttached - a.lastAttached;
+    });
   } catch {
     return [];
   }
@@ -198,6 +201,44 @@ export function initPanes(sessionName: string, windowIndex: number, layoutId: nu
     const target = `${base}.${paneBase + step.pane}`;
     execSync(`tmux split-window -t ${target} ${dir} -p ${step.percentage}${cFlag}`, { stdio: 'pipe' });
   }
+}
+
+export function listPanes(sessionName: string, windowIndex: number): TmuxPane[] {
+  const format = '#{pane_index}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_active}';
+  const safeName = sessionName.replace(/'/g, "'\\''");
+  try {
+    const output = execSync(`tmux list-panes -t '${safeName}':${windowIndex} -F '${format}'`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    if (!output) return [];
+    return output.split('\n').map((line) => {
+      const [index, title, currentCommand, currentPath, active] = line.split('\t');
+      return {
+        index: parseInt(index, 10),
+        title,
+        currentCommand,
+        currentPath,
+        active: active === '1',
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function getSessionDetail(sessionName: string): TmuxWindow[] {
+  const windows = listWindows(sessionName);
+  return windows.map((w) => ({
+    ...w,
+    paneList: listPanes(sessionName, w.index),
+  }));
+}
+
+export function moveWindow(srcSession: string, windowIndex: number, dstSession: string): void {
+  const safeSrc = srcSession.replace(/'/g, "'\\''");
+  const safeDst = dstSession.replace(/'/g, "'\\''");
+  execSync(`tmux move-window -s '${safeSrc}':${windowIndex} -t '${safeDst}':`, { stdio: 'pipe' });
 }
 
 export function formatTime(epoch: number): string {

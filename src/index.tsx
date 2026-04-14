@@ -5,7 +5,7 @@ import { render } from 'ink';
 import { execSync } from 'child_process';
 import { basename } from 'path';
 import App from './components/App.js';
-import { createSession, killSession, renameSession, detachSession } from './services/tmuxService.js';
+import { createSession, killSession, renameSession, detachSession, listSessions } from './services/tmuxService.js';
 import type { TmuxSession } from './types.js';
 
 function attachToSession(name: string) {
@@ -39,12 +39,29 @@ if (args[0] === 'init' || args[0] === '-i') {
   process.exit(0);
 }
 
-if (args[0] !== undefined) {
-  console.error(`Unknown argument: ${args[0]}`);
-  process.exit(1);
+if (args[0] === 'last' || args[0] === '-l') {
+  const sessions = listSessions();
+  if (sessions.length === 0) {
+    console.error('No tmux sessions found');
+    process.exit(1);
+  }
+  try {
+    attachToSession(sessions[0].name);
+  } catch {
+    process.exit(1);
+  }
+  process.exit(0);
 }
 
 // ── TUI mode ──
+const favoritesOnly = args.includes('--favorites') || args.includes('-F');
+const filteredArgs = args.filter((a) => a !== '--favorites' && a !== '-F');
+
+if (filteredArgs[0] !== undefined) {
+  console.error(`Unknown argument: ${filteredArgs[0]}`);
+  process.exit(1);
+}
+
 const state = {
   session: null as TmuxSession | null,
   newSession: null as string | null,
@@ -60,6 +77,7 @@ const instance = render(
     onKill: (name: string) => { killSession(name); },
     onRename: (oldName: string, newName: string) => { renameSession(oldName, newName); },
     onDetach: (name: string) => { detachSession(name); },
+    favoritesOnly,
   }),
 );
 
