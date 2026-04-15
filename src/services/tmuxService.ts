@@ -21,7 +21,7 @@ export function listSessions(): TmuxSession[] {
         attached: attached === '1',
         sessionId,
         path: path || '',
-        lastAttached: parseInt(lastAttached, 10),
+        lastAttached: parseInt(lastAttached, 10) || 0,
       };
     });
 
@@ -242,6 +242,7 @@ export function moveWindow(srcSession: string, windowIndex: number, dstSession: 
 }
 
 export function formatTime(epoch: number): string {
+  if (!epoch) return '—';
   const d = new Date(epoch * 1000);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const h = d.getHours().toString().padStart(2, '0');
