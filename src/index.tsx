@@ -16,8 +16,37 @@ function attachToSession(name: string) {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-// ── tmuxtui init ──
+// ── Commands ──
 const args = process.argv.slice(2);
+
+function showHelp() {
+  console.log(`
+tmuxtui - Terminal UI for tmux session management
+
+USAGE:
+  tmuxtui [OPTIONS]
+
+OPTIONS:
+  -h, --help          Show this help message
+  -v, --version       Show version information
+  update              Self-update to the latest version
+  init, -i            Register current directory as a new tmux session
+  last, -l            Attach to the most recent session
+  -F, --favorites     Show only favorited sessions (TUI mode)
+
+EXAMPLES:
+  tmuxtui                     Launch the TUI session picker
+  tmuxtui -v                  Show version
+  tmuxtui update              Update to latest version
+  tmuxtui init                Create session from current directory
+  tmuxtui --favorites         Show only favorited sessions
+`);
+}
+
+if (args[0] === 'help' || args[0] === '-h' || args[0] === '--help') {
+  showHelp();
+  process.exit(0);
+}
 
 if (args[0] === 'version' || args[0] === '-v' || args[0] === '--version') {
   const ver = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
@@ -86,6 +115,7 @@ const filteredArgs = args.filter((a) => a !== '--favorites' && a !== '-F');
 
 if (filteredArgs[0] !== undefined) {
   console.error(`Unknown argument: ${filteredArgs[0]}`);
+  console.error('Use "tmuxtui -h" or "tmuxtui --help" for usage information.');
   process.exit(1);
 }
 
