@@ -11,6 +11,9 @@
   ],
   "scripts": {
     "dev": "tsx src/index.tsx",
+    "dev:args": "tsx src/index.tsx",
+    "dev:build": "npm run build && node dist/tmuxtui.js",
+    "dev:pack": "npm run build && npm pack && tar -xzf *.tgz && rm -f *.tgz",
     "build": "node build.mjs",
     "prepublishOnly": "npm run build"
   },

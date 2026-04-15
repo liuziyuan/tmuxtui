@@ -128,6 +128,54 @@ tmuxtui -F
 
 打开 tmuxtui 但仅显示已收藏的会话。
 
+## 开发
+
+### 环境要求
+
+- Node.js >= 18
+- tmux >= 3.2
+
+### 环境设置
+
+```bash
+# 克隆仓库
+git clone https://github.com/yourusername/tmuxtui.git
+cd tmuxtui
+
+# 安装依赖
+npm install
+```
+
+### 开发命令
+
+```bash
+# 运行开发模式（带子命令）
+npm run dev -- init
+npm run dev -- --help
+
+# 传递参数运行（替代方式）
+npm run dev:args init
+
+# 构建并测试编译输出
+npm run dev:build -- init
+
+# 测试打包分发（发布前验证）
+npm run dev:pack
+```
+
+### 构建和发布
+
+```bash
+# 构建项目
+npm run build
+
+# 模拟发布（创建 .tgz 用于测试）
+npm pack
+
+# 发布到 npm
+npm publish
+```
+
 ## License
 
 MIT

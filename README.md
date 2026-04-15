@@ -128,6 +128,54 @@ tmuxtui -F
 
 Open tmuxtui showing only favorited sessions.
 
+## Development
+
+### Prerequisites
+
+- Node.js >= 18
+- tmux >= 3.2
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/tmuxtui.git
+cd tmuxtui
+
+# Install dependencies
+npm install
+```
+
+### Development Commands
+
+```bash
+# Run in development mode (with subcommands)
+npm run dev -- init
+npm run dev -- --help
+
+# Run with arguments (alternative)
+npm run dev:args init
+
+# Build and test the compiled output
+npm run dev:build -- init
+
+# Test the packaged distribution (before publish)
+npm run dev:pack
+```
+
+### Build and Publish
+
+```bash
+# Build the project
+npm run build
+
+# Dry-run publish (creates .tgz for testing)
+npm pack
+
+# Publish to npm
+npm publish
+```
+
 ## License
 
 MIT

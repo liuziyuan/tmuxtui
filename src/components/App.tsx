@@ -4,7 +4,7 @@ import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPan
 import { loadFavorites, toggleFavorite } from '../services/favoritesService.js';
 import type { TmuxSession, TmuxWindow } from '../types.js';
 
-type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config' | 'search' | 'detail' | 'confirm-batch-kill';
+type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config' | 'search' | 'detail' | 'confirm-batch-kill' | 'help';
 type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes' | 'move';
 
 interface SessionViewProps {
@@ -223,6 +223,15 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
           setDetailSelected((i) => (i - 1 + detailWindows.length) % detailWindows.length);
         } else if (key.downArrow) {
           setDetailSelected((i) => (i + 1) % detailWindows.length);
+        }
+        return;
+      }
+
+      // ── help mode ──
+      if (mode === 'help') {
+        if (key.escape || input === 'q' || input === 'h') {
+          setMode('list');
+          return;
         }
         return;
       }
@@ -474,6 +483,10 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         setMode('detail');
         return;
       }
+      if (input === 'h') {
+        setMode('help');
+        return;
+      }
       if (input === 'n') {
         setMode('new');
         setFocusField('name');
@@ -706,6 +719,57 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
     );
   }
 
+  // ── Render: help ──
+  if (mode === 'help') {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box marginBottom={1}>
+          <Text bold color="white" backgroundColor="blue">{' tmuxtui '}</Text>
+          <Text>{' '}</Text>
+          <Text bold color="cyan">Help</Text>
+          <Text dimColor>{'  All available commands'}</Text>
+        </Box>
+
+        <Box flexDirection="column">
+          <Text bold color="white">NAVIGATION</Text>
+          <Text>{'  '}<Text bold>↑↓</Text><Text dimColor>          Select session</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">SESSION MANAGEMENT</Text></Box>
+          <Text>{'  '}<Text bold>↵</Text><Text dimColor>           Attach to selected session</Text></Text>
+          <Text>{'  '}<Text color="green" bold>n</Text><Text dimColor>           Create new session</Text></Text>
+          <Text>{'  '}<Text color="yellow" bold>r</Text><Text dimColor>           Rename selected session</Text></Text>
+          <Text>{'  '}<Text color="blue" bold>x</Text><Text dimColor>           Detach selected session</Text></Text>
+          <Text>{'  '}<Text color="red" bold>d</Text><Text dimColor>           Delete selected session</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">SEARCH & FILTER</Text></Box>
+          <Text>{'  '}<Text color="cyan" bold>/</Text><Text dimColor>           Search sessions by name</Text></Text>
+          <Text>{'  '}<Text color="yellow" bold>s</Text><Text dimColor>           Toggle favorite on selected session</Text></Text>
+          <Text>{'  '}<Text color="cyan" bold>f</Text><Text dimColor>           Filter list to favorites only</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">ADVANCED</Text></Box>
+          <Text>{'  '}<Text color="magenta" bold>c</Text><Text dimColor>           Config — manage windows for selected session</Text></Text>
+          <Text>{'  '}<Text color="white" bold>i</Text><Text dimColor>           Show session details (windows & panes)</Text></Text>
+          <Text>{'  '}<Text color="white" bold>R</Text><Text dimColor>           Refresh session list</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">BATCH OPERATIONS</Text></Box>
+          <Text>{'  '}<Text color="white" bold>Tab</Text><Text dimColor>         Mark / unmark session</Text></Text>
+          <Text>{'  '}<Text color="blue" bold>X</Text><Text dimColor>           Batch detach all marked sessions</Text></Text>
+          <Text>{'  '}<Text color="red" bold>D</Text><Text dimColor>           Batch delete all marked sessions</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">OTHER</Text></Box>
+          <Text>{'  '}<Text bold>q</Text><Text dimColor>           Quit tmuxtui</Text></Text>
+          <Text>{'  '}<Text bold>h</Text><Text dimColor>           Show this help screen</Text></Text>
+        </Box>
+
+        {interactive && (
+          <Box marginTop={1}>
+            <Text dimColor>esc back to sessions</Text>
+          </Box>
+        )}
+      </Box>
+    );
+  }
+
   // ── Render: config ──
   if (mode === 'config' && configSession) {
     // config/new sub-mode
@@ -929,19 +993,20 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         <Box marginTop={1} flexDirection="column">
             <Box>
               <Text dimColor>↑↓ select | ↵ attach | </Text>
-              <Text color="cyan" bold>/</Text><Text dimColor> search | </Text>
               <Text color="green" bold>n</Text><Text dimColor> new | </Text>
               <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
-              <Text color="white" bold>R</Text><Text dimColor> refresh | </Text>
-              <Text dimColor>q quit</Text>
+              <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
+              <Text dimColor>q quit | </Text>
+              <Text bold>h</Text><Text dimColor> help</Text>
             </Box>
             <Box>
+              <Text color="cyan" bold>/</Text><Text dimColor> search | </Text>
+              <Text color="yellow" bold>s</Text><Text dimColor> star | </Text>
+              <Text color="cyan" bold>f</Text><Text dimColor> filter | </Text>
+              <Text color="white" bold>R</Text><Text dimColor> refresh | </Text>
               <Text color="blue" bold>x</Text><Text dimColor> detach | </Text>
               <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
-              <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
-              <Text color="white" bold>i</Text><Text dimColor> info | </Text>
-              <Text color="yellow" bold>s</Text><Text dimColor> star | </Text>
-              <Text color="cyan" bold>f</Text><Text dimColor> filter</Text>
+              <Text color="white" bold>i</Text><Text dimColor> info</Text>
             </Box>
             <Box>
               <Text color="white" bold>Tab</Text><Text dimColor> mark | </Text>
