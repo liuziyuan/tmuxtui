@@ -25,6 +25,10 @@
   ],
   "author": "liu ziyuan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liuziyuan/tmuxtui"
+  },
   "engines": {
     "node": ">=18"
   },
