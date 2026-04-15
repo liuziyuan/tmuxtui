@@ -53,6 +53,33 @@ if (args[0] === 'last' || args[0] === '-l') {
   process.exit(0);
 }
 
+if (args[0] === 'update') {
+  const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+  console.log(`Current version: v${currentVersion}`);
+
+  let latestVersion: string;
+  try {
+    latestVersion = execSync('npm view tmux-tui version', { encoding: 'utf8' }).trim();
+  } catch {
+    console.error('Failed to check latest version. Please check your network connection.');
+    process.exit(1);
+  }
+
+  if (currentVersion === latestVersion) {
+    console.log('Already up to date.');
+    process.exit(0);
+  }
+
+  console.log(`Updating to v${latestVersion}...`);
+  try {
+    execSync('npm install -g tmux-tui@latest', { stdio: 'inherit' });
+  } catch {
+    process.exit(1);
+  }
+  console.log(`Done. Updated to v${latestVersion}`);
+  process.exit(0);
+}
+
 // ── TUI mode ──
 const favoritesOnly = args.includes('--favorites') || args.includes('-F');
 const filteredArgs = args.filter((a) => a !== '--favorites' && a !== '-F');

@@ -78,7 +78,9 @@ When you press `i`, you can choose from 9 built-in pane layouts:
 | 8. Quad | 4 | 2x2 grid |
 | 9. IDE Pro | 4 | IDE + split right panel |
 
-### Quick register current project
+### Commands
+
+#### Init — register current project
 
 ```bash
 tmuxtui init
@@ -87,6 +89,44 @@ tmuxtui -i
 ```
 
 Creates a new tmux session named after the current directory and opens it with tmuxtui.
+
+#### Update — self-update
+
+```bash
+tmuxtui update
+```
+
+Checks for the latest version on npm registry and automatically updates tmuxtui if a newer version is available. Shows the current version, and confirms the updated version after completion.
+
+#### Version — show version
+
+```bash
+tmuxtui --version
+# or
+tmuxtui -v
+```
+
+Displays the installed version of tmuxtui.
+
+#### Last — attach to most recent session
+
+```bash
+tmuxtui last
+# or
+tmuxtui -l
+```
+
+Quickly attach to the most recently used tmux session without opening the session picker.
+
+#### Favorites only
+
+```bash
+tmuxtui --favorites
+# or
+tmuxtui -F
+```
+
+Open tmuxtui showing only favorited sessions.
 
 ## License
 

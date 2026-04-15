@@ -78,7 +78,9 @@ tmuxtui
 | 8. Quad | 4 | 2x2 网格 |
 | 9. IDE Pro | 4 | IDE + 右侧分屏 |
 
-### 快速注册当前项目
+### 命令
+
+#### Init — 注册当前项目
 
 ```bash
 tmuxtui init
@@ -87,6 +89,44 @@ tmuxtui -i
 ```
 
 以当前目录名创建 tmux 会话，并通过 tmuxtui 打开。
+
+#### Update — 自动更新
+
+```bash
+tmuxtui update
+```
+
+检查 npm 仓库中的最新版本，如有新版本则自动更新 tmuxtui。显示当前版本，更新完成后确认新版本号。
+
+#### Version — 显示版本
+
+```bash
+tmuxtui --version
+# 或
+tmuxtui -v
+```
+
+显示已安装的 tmuxtui 版本。
+
+#### Last — 快速接入最近会话
+
+```bash
+tmuxtui last
+# 或
+tmuxtui -l
+```
+
+直接接入最近使用的 tmux 会话，无需打开会话选择器。
+
+#### Favorites only — 仅显示收藏会话
+
+```bash
+tmuxtui --favorites
+# 或
+tmuxtui -F
+```
+
+打开 tmuxtui 但仅显示已收藏的会话。
 
 ## License
 
