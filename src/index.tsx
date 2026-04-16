@@ -10,9 +10,10 @@ import type { TmuxSession } from './types.js';
 
 function attachToSession(name: string) {
   process.stdout.write(`\x1b]0;[tmux] ${name}\x07`);
+  const escaped = `'${name.replace(/'/g, "'\\''")}'`;
   const cmd = process.env.TMUX
-    ? `tmux switch-client -t ${name}`
-    : `tmux attach-session -t ${name}`;
+    ? `tmux switch-client -t ${escaped}`
+    : `tmux attach-session -t ${escaped}`;
   execSync(cmd, { stdio: 'inherit' });
 }
 
@@ -31,6 +32,7 @@ OPTIONS:
   -v, --version       Show version information
   update              Self-update to the latest version
   init, -i            Register current directory as a new tmux session
+  .                   Attach to current directory's session (or hint to init)
   last, -l            Attach to the most recent session
   -F, --favorites     Show only favorited sessions (TUI mode)
 
@@ -39,6 +41,7 @@ EXAMPLES:
   tmuxtui -v                  Show version
   tmuxtui update              Update to latest version
   tmuxtui init                Create session from current directory
+  tmuxtui .                   Open current directory's tmux session
   tmuxtui --favorites         Show only favorited sessions
 `);
 }
@@ -63,6 +66,23 @@ if (args[0] === 'init' || args[0] === '-i') {
     console.log(`${sessionName} project has been added to tmuxtui`);
   } catch {
     console.error(`Failed to create session. A session with the same name may already exist.`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (args[0] === '.') {
+  const sessionName = basename(process.cwd());
+  const sessions = listSessions();
+  const found = sessions.find(s => s.name === sessionName);
+  if (found) {
+    try {
+      attachToSession(sessionName);
+    } catch {
+      process.exit(1);
+    }
+  } else {
+    console.error(`Session "${sessionName}" not found. Run \`tmuxtui init\` to create it first.`);
     process.exit(1);
   }
   process.exit(0);
