@@ -15,6 +15,17 @@ tmux 会话管理的交互式终端界面。无需记忆 tmux 命令，即可浏
 - **全场景适配** — 在 tmux 内外均可运行（自动检测并使用 `switch-client` 或 `attach-session`）
 - **`init` 命令** — 一行命令将当前目录注册为新的 tmux 会话
 
+## Session 持久化
+
+tmux session 存在于 `tmux server` 进程的内存中。**重启电脑会杀掉 server，所有 session 随之消失** —— 这是 tmux 的固有行为，不是 tmuxtui 能单独解决的（tmuxtui 仅把收藏夹列表持久化到 `~/.config/tmuxtui/favorites.json`）。
+
+如果希望 session、window、pane 乃至部分运行中的程序能跨重启保留，推荐安装社区标准插件组合：
+
+- [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) —— 手动保存/恢复完整的 session 树
+- [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) —— 周期性自动保存，tmux 启动时自动还原
+
+tmuxtui 与上述两个插件天然兼容：它们负责把 tmux 状态落盘，tmuxtui 仅读取 server 当前状态。
+
 ## 环境要求
 
 - Node.js >= 18

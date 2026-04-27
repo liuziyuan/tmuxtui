@@ -15,6 +15,17 @@ Interactive terminal UI for managing tmux sessions. Browse, create, rename, deta
 - **Works everywhere** — runs inside or outside tmux (auto-detects and uses `switch-client` or `attach-session`)
 - **`init` command** — register the current directory as a new tmux session in one step
 
+## Session persistence
+
+tmux sessions live in the `tmux server` process memory. **Rebooting your machine kills the server and wipes every session** — this is a tmux behavior, not something tmuxtui can fix on its own (tmuxtui only persists your favorites list at `~/.config/tmuxtui/favorites.json`).
+
+If you want sessions, windows, panes, and even some running programs to survive reboots, install the community-standard pair:
+
+- [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) — manual save/restore of the full session tree
+- [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) — automatic periodic save and auto-restore on tmux start
+
+tmuxtui works seamlessly alongside both — they snapshot tmux's state to disk; tmuxtui reads whatever state the server currently has.
+
 ## Requirements
 
 - Node.js >= 18
