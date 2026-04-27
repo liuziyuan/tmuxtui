@@ -1,6 +1,6 @@
 {
   "name": "tmux-tui",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Terminal UI for tmux session management",
   "type": "module",
   "bin": {
