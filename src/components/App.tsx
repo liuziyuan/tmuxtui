@@ -759,6 +759,10 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
           <Box marginTop={1}><Text bold color="white">OTHER</Text></Box>
           <Text>{'  '}<Text bold>q</Text><Text dimColor>           Quit tmuxtui</Text></Text>
           <Text>{'  '}<Text bold>h</Text><Text dimColor>           Show this help screen</Text></Text>
+
+          <Box marginTop={1}><Text bold color="white">PERSISTENCE</Text></Box>
+          <Text dimColor>{'  Sessions live in tmux server memory and do NOT survive reboots.'}</Text>
+          <Text dimColor>{'  Install tmux-resurrect + tmux-continuum to save/restore across restarts.'}</Text>
         </Box>
 
         {interactive && (
