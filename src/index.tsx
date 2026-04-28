@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { basename } from 'path';
 import App from './components/App.js';
 import { createSession, killSession, renameSession, detachSession, listSessions } from './services/tmuxService.js';
+import { loadConfig, sortSessions } from './services/configService.js';
 import type { TmuxSession } from './types.js';
 
 function attachToSession(name: string) {
@@ -89,7 +90,8 @@ if (args[0] === '.') {
 }
 
 if (args[0] === 'last' || args[0] === '-l') {
-  const sessions = listSessions();
+  const cfg = loadConfig();
+  const sessions = sortSessions(listSessions(), cfg.defaultSort);
   if (sessions.length === 0) {
     console.error('No tmux sessions found');
     process.exit(1);
@@ -130,6 +132,7 @@ if (args[0] === 'update') {
 }
 
 // ── TUI mode ──
+const config = loadConfig();
 const favoritesOnly = args.includes('--favorites') || args.includes('-F');
 const filteredArgs = args.filter((a) => a !== '--favorites' && a !== '-F');
 
@@ -155,6 +158,7 @@ const instance = render(
     onRename: (oldName: string, newName: string) => { renameSession(oldName, newName); },
     onDetach: (name: string) => { detachSession(name); },
     favoritesOnly,
+    config,
   }),
 );
 
@@ -163,7 +167,7 @@ await instance.waitUntilExit();
 try {
   if (state.session) {
     attachToSession(state.session.name);
-  } else if (state.newSession) {
+  } else if (state.newSession && config.autoAttachOnCreate) {
     attachToSession(state.newSession);
   }
 } catch {

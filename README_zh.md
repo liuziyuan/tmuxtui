@@ -45,7 +45,7 @@ npm install -g tmux-tui
 tmuxtui
 ```
 
-快捷键：
+快捷键（全部可通过配置文件自定义）：
 
 | 按键 | 操作 |
 |------|------|
@@ -56,9 +56,56 @@ tmuxtui
 | `x` | 分离会话 |
 | `d` | 销毁会话（需确认） |
 | `c` | 配置 — 窗口管理 |
+| `i` | 查看会话详情（窗口和 pane） |
+| `/` | 搜索会话 |
+| `s` | 收藏/取消收藏 |
+| `f` | 仅显示收藏会话 |
+| `R` | 刷新会话列表 |
+| `Tab` | 标记/取消标记会话 |
+| `X` | 批量分离已标记会话 |
+| `D` | 批量销毁已标记会话 |
+| `h` | 帮助 |
 | `q` | 退出 |
 
 创建新会话时，按 `Tab` 在名称和路径输入框之间切换。
+
+### 配置文件
+
+创建 `~/.config/tmuxtui/config.json` 自定义行为：
+
+```json
+{
+  "defaultSort": "lastAttached",
+  "confirmBeforeKill": true,
+  "autoAttachOnCreate": false,
+  "refreshInterval": 0,
+  "keybindings": {
+    "quit": "escape",
+    "new": "n",
+    "kill": "d"
+  },
+  "ui": {
+    "showPath": true,
+    "showSessionId": false,
+    "sessionNameWidth": 20
+  }
+}
+```
+
+#### 配置项说明
+
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `defaultSort` | `"lastAttached"` | 排序方式：`"lastAttached"`、`"name"` 或 `"created"` |
+| `confirmBeforeKill` | `true` | 销毁会话前是否需要确认 |
+| `autoAttachOnCreate` | `false` | 创建会话后是否自动 attach |
+| `refreshInterval` | `0` | 自动刷新间隔（秒），0 = 关闭 |
+| `ui.showPath` | `true` | 显示会话工作目录 |
+| `ui.showSessionId` | `false` | 显示 tmux 会话 ID |
+| `ui.sessionNameWidth` | `20` | 会话名列宽度（10-60） |
+| `keybindings.*` | 见默认值 | 自定义任意快捷键 |
+
+所有可配置的键绑定名称：`select-up`、`select-down`、`attach`、`new`、`rename`、`kill`、`detach`、`search`、`favorite`、`favorites-filter`、`refresh`、`help`、`quit`、`batch-mark`、`batch-detach`、`batch-kill`、`detail`、`config`。
 
 ### 配置模式（窗口管理）
 
