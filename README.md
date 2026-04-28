@@ -45,7 +45,7 @@ npm install -g tmux-tui
 tmuxtui
 ```
 
-Keyboard shortcuts:
+Keyboard shortcuts (all customizable via config file):
 
 | Key | Action |
 |-----|--------|
@@ -56,9 +56,56 @@ Keyboard shortcuts:
 | `x` | Detach session |
 | `d` | Kill session (with confirm) |
 | `c` | Config — window management |
+| `i` | Session details (windows & panes) |
+| `/` | Search sessions |
+| `s` | Toggle favorite |
+| `f` | Filter favorites only |
+| `R` | Refresh session list |
+| `Tab` | Mark / unmark session |
+| `X` | Batch detach marked sessions |
+| `D` | Batch kill marked sessions |
+| `h` | Help |
 | `q` | Quit |
 
 When creating a new session, press `Tab` to switch between the name and path fields.
+
+### Configuration
+
+Create `~/.config/tmuxtui/config.json` to customize behavior:
+
+```json
+{
+  "defaultSort": "lastAttached",
+  "confirmBeforeKill": true,
+  "autoAttachOnCreate": false,
+  "refreshInterval": 0,
+  "keybindings": {
+    "quit": "escape",
+    "new": "n",
+    "kill": "d"
+  },
+  "ui": {
+    "showPath": true,
+    "showSessionId": false,
+    "sessionNameWidth": 20
+  }
+}
+```
+
+#### Config options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `defaultSort` | `"lastAttached"` | Sort mode: `"lastAttached"`, `"name"`, or `"created"` |
+| `confirmBeforeKill` | `true` | Show confirmation before killing sessions |
+| `autoAttachOnCreate` | `false` | Auto-attach after creating a new session |
+| `refreshInterval` | `0` | Auto-refresh interval in seconds (0 = disabled) |
+| `ui.showPath` | `true` | Show session working directory |
+| `ui.showSessionId` | `false` | Show tmux session ID |
+| `ui.sessionNameWidth` | `20` | Session name column width (10-60) |
+| `keybindings.*` | see defaults | Remap any keyboard shortcut |
+
+All keybinding names: `select-up`, `select-down`, `attach`, `new`, `rename`, `kill`, `detach`, `search`, `favorite`, `favorites-filter`, `refresh`, `help`, `quit`, `batch-mark`, `batch-detach`, `batch-kill`, `detail`, `config`.
 
 ### Config mode (window management)
 

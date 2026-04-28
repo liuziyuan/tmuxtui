@@ -472,13 +472,13 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
         setSelected((i) => (i + 1) % displayedSessions.length);
         return;
       }
-      if (input === 'X' && marked.size > 0) {
+      if (matchesKey(bindings['batch-detach'], input, key) && marked.size > 0) {
         for (const name of marked) { onDetach?.(name); }
         setMarked(new Set());
         refresh();
         return;
       }
-      if (input === 'D' && marked.size > 0) {
+      if (matchesKey(bindings['batch-kill'], input, key) && marked.size > 0) {
         if (cfg.confirmBeforeKill) {
           setMode('confirm-batch-kill');
         } else {
@@ -494,7 +494,7 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
         setSelected(0);
         return;
       }
-      if (input === 'i' && displayedSessions.length > 0) {
+      if (matchesKey(bindings['detail'], input, key) && displayedSessions.length > 0) {
         const s = displayedSessions[selected];
         setDetailSession(s);
         setDetailWindows(getSessionDetail(s.name));
@@ -534,7 +534,7 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
         }
         return;
       }
-      if (input === 'c' && displayedSessions.length > 0) {
+      if (matchesKey(bindings['config'], input, key) && displayedSessions.length > 0) {
         const s = displayedSessions[selected];
         setConfigSession(s);
         setConfigWindows(listWindows(s.name));
@@ -772,14 +772,14 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
           <Text>{'  '}<Text color="cyan" bold>{kb['favorites-filter']}</Text><Text dimColor>           Filter list to favorites only</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">ADVANCED</Text></Box>
-          <Text>{'  '}<Text color="magenta" bold>c</Text><Text dimColor>           Config — manage windows for selected session</Text></Text>
-          <Text>{'  '}<Text color="white" bold>i</Text><Text dimColor>           Show session details (windows & panes)</Text></Text>
+          <Text>{'  '}<Text color="magenta" bold>{kb['config']}</Text><Text dimColor>           Config — manage windows for selected session</Text></Text>
+          <Text>{'  '}<Text color="white" bold>{kb['detail']}</Text><Text dimColor>           Show session details (windows & panes)</Text></Text>
           <Text>{'  '}<Text color="white" bold>{kb['refresh']}</Text><Text dimColor>           Refresh session list</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">BATCH OPERATIONS</Text></Box>
           <Text>{'  '}<Text color="white" bold>{kb['batch-mark']}</Text><Text dimColor>         Mark / unmark session</Text></Text>
-          <Text>{'  '}<Text color="blue" bold>X</Text><Text dimColor>           Batch detach all marked sessions</Text></Text>
-          <Text>{'  '}<Text color="red" bold>D</Text><Text dimColor>           Batch delete all marked sessions</Text></Text>
+          <Text>{'  '}<Text color="blue" bold>{kb['batch-detach']}</Text><Text dimColor>           Batch detach all marked sessions</Text></Text>
+          <Text>{'  '}<Text color="red" bold>{kb['batch-kill']}</Text><Text dimColor>           Batch delete all marked sessions</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">OTHER</Text></Box>
           <Text>{'  '}<Text bold>{kb['quit']}</Text><Text dimColor>           Quit tmuxtui</Text></Text>
@@ -1025,7 +1025,7 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
               <Text dimColor>{cfg.keybindings['select-up']}/{cfg.keybindings['select-down']} select | {cfg.keybindings['attach']} attach | </Text>
               <Text color="green" bold>{cfg.keybindings['new']}</Text><Text dimColor> new | </Text>
               <Text color="yellow" bold>{cfg.keybindings['rename']}</Text><Text dimColor> rename | </Text>
-              <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
+              <Text color="magenta" bold>{cfg.keybindings['config']}</Text><Text dimColor> config | </Text>
               <Text dimColor>{cfg.keybindings['quit']} quit | </Text>
               <Text bold>{cfg.keybindings['help']}</Text><Text dimColor> help</Text>
             </Box>
@@ -1036,12 +1036,12 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
               <Text color="white" bold>{cfg.keybindings['refresh']}</Text><Text dimColor> refresh | </Text>
               <Text color="blue" bold>{cfg.keybindings['detach']}</Text><Text dimColor> detach | </Text>
               <Text color="red" bold>{cfg.keybindings['kill']}</Text><Text dimColor> delete | </Text>
-              <Text color="white" bold>i</Text><Text dimColor> info</Text>
+              <Text color="white" bold>{cfg.keybindings['detail']}</Text><Text dimColor> info</Text>
             </Box>
             <Box>
               <Text color="white" bold>{cfg.keybindings['batch-mark']}</Text><Text dimColor> mark | </Text>
-              <Text color="blue" bold>X</Text><Text dimColor> batch detach | </Text>
-              <Text color="red" bold>D</Text><Text dimColor> batch kill</Text>
+              <Text color="blue" bold>{cfg.keybindings['batch-detach']}</Text><Text dimColor> batch detach | </Text>
+              <Text color="red" bold>{cfg.keybindings['batch-kill']}</Text><Text dimColor> batch kill</Text>
             </Box>
         </Box>
       )}

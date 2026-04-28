@@ -12,7 +12,8 @@ type KeyAction =
   | 'attach' | 'new' | 'rename' | 'kill'
   | 'detach' | 'search' | 'favorite'
   | 'favorites-filter' | 'refresh' | 'help' | 'quit'
-  | 'batch-mark';
+  | 'batch-mark' | 'batch-detach' | 'batch-kill'
+  | 'detail' | 'config';
 
 export interface UserConfig {
   defaultSort?: SortMode;
@@ -42,6 +43,10 @@ const DEFAULT_KEYBINDINGS: Record<KeyAction, string> = {
   'help': 'h',
   'quit': 'q',
   'batch-mark': 'tab',
+  'batch-detach': 'X',
+  'batch-kill': 'D',
+  'detail': 'i',
+  'config': 'c',
 };
 
 export type ResolvedConfig = {
