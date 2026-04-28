@@ -25,10 +25,7 @@ export function listSessions(): TmuxSession[] {
       };
     });
 
-    return sessions.sort((a, b) => {
-      if (a.attached !== b.attached) return a.attached ? -1 : 1;
-      return b.lastAttached - a.lastAttached;
-    });
+    return sessions;
   } catch {
     return [];
   }

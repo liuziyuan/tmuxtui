@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime, getSessionDetail, moveWindow } from '../services/tmuxService.js';
 import { loadFavorites, toggleFavorite } from '../services/favoritesService.js';
+import { loadConfig, matchesKey, sortSessions } from '../services/configService.js';
+import type { ResolvedConfig } from '../services/configService.js';
 import type { TmuxSession, TmuxWindow } from '../types.js';
 
 type Mode = 'list' | 'new' | 'rename' | 'confirm-kill' | 'config' | 'search' | 'detail' | 'confirm-batch-kill' | 'help';
@@ -9,6 +11,7 @@ type ConfigSubMode = 'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes'
 
 interface SessionViewProps {
   interactive: boolean;
+  config: ResolvedConfig;
   onSelect?: (session: TmuxSession) => void;
   onCreate?: (name: string, path: string) => void;
   onKill?: (name: string) => void;
@@ -16,8 +19,9 @@ interface SessionViewProps {
   onDetach?: (name: string) => void;
 }
 
-function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, onRename, onDetach }: SessionViewProps & { favoritesOnly?: boolean }) {
+function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, onKill, onRename, onDetach }: SessionViewProps & { favoritesOnly?: boolean }) {
   const { exit } = useApp();
+  const cfg = config;
 
   function fuzzyMatch(query: string, text: string): boolean {
     const q = query.toLowerCase();
@@ -28,7 +32,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
     }
     return qi === q.length;
   }
-  const [sessions, setSessions] = useState(listSessions);
+  const [sessions, setSessions] = useState(() => sortSessions(listSessions(), cfg.defaultSort));
   const [selected, setSelected] = useState(0);
   const [mode, setMode] = useState<Mode>('list');
   const [inputValue, setinputValue] = useState('');
@@ -63,7 +67,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
   const [marked, setMarked] = useState<Set<string>>(new Set());
 
   const refresh = () => {
-    const updated = listSessions();
+    const updated = sortSessions(listSessions(), cfg.defaultSort);
     setSessions(updated);
     setSelected((i) => Math.min(i, Math.max(0, updated.length - 1)));
   };
@@ -101,7 +105,15 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
           }
           const expandedPath = (inputValue2 || process.cwd()).replace(/^~/, process.env.HOME || '~');
           onCreate?.(inputValue.trim(), expandedPath);
-          exit();
+          if (cfg.autoAttachOnCreate) {
+            exit();
+          } else {
+            refresh();
+            setMode('list');
+            setinputValue('');
+            setinputValue2('');
+            setError('');
+          }
           return;
         }
         if (key.backspace || key.delete) {
@@ -438,18 +450,19 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
       }
 
       // ── list mode ──
-      if (input === 'q') { exit(); return; }
-      if (input === 'R') { refresh(); return; }
-      if (input === 's' && displayedSessions.length > 0) {
+      const bindings = cfg.keybindings;
+      if (matchesKey(bindings['quit'], input, key)) { exit(); return; }
+      if (matchesKey(bindings['refresh'], input, key)) { refresh(); return; }
+      if (matchesKey(bindings['favorite'], input, key) && displayedSessions.length > 0) {
         setFavorites(toggleFavorite(displayedSessions[selected].name, favorites));
         return;
       }
-      if (input === 'f') {
+      if (matchesKey(bindings['favorites-filter'], input, key)) {
         setShowFavoritesOnly((v) => !v);
         setSelected(0);
         return;
       }
-      if (key.tab && displayedSessions.length > 0) {
+      if (matchesKey(bindings['batch-mark'], input, key) && displayedSessions.length > 0) {
         setMarked((prev) => {
           const next = new Set(prev);
           const name = displayedSessions[selected].name;
@@ -466,10 +479,16 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         return;
       }
       if (input === 'D' && marked.size > 0) {
-        setMode('confirm-batch-kill');
+        if (cfg.confirmBeforeKill) {
+          setMode('confirm-batch-kill');
+        } else {
+          for (const name of marked) { onKill?.(name); }
+          setMarked(new Set());
+          refresh();
+        }
         return;
       }
-      if (input === '/') {
+      if (matchesKey(bindings['search'], input, key)) {
         setMode('search');
         setSearchQuery('');
         setSelected(0);
@@ -483,11 +502,11 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         setMode('detail');
         return;
       }
-      if (input === 'h') {
+      if (matchesKey(bindings['help'], input, key)) {
         setMode('help');
         return;
       }
-      if (input === 'n') {
+      if (matchesKey(bindings['new'], input, key)) {
         setMode('new');
         setFocusField('name');
         setinputValue('');
@@ -495,19 +514,24 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         setError('');
         return;
       }
-      if (input === 'r' && displayedSessions.length > 0) {
+      if (matchesKey(bindings['rename'], input, key) && displayedSessions.length > 0) {
         setMode('rename');
         setinputValue(displayedSessions[selected].name);
         setError('');
         return;
       }
-      if (input === 'x' && displayedSessions.length > 0) {
+      if (matchesKey(bindings['detach'], input, key) && displayedSessions.length > 0) {
         onDetach?.(displayedSessions[selected].name);
         refresh();
         return;
       }
-      if (input === 'd' && displayedSessions.length > 0) {
-        setMode('confirm-kill');
+      if (matchesKey(bindings['kill'], input, key) && displayedSessions.length > 0) {
+        if (cfg.confirmBeforeKill) {
+          setMode('confirm-kill');
+        } else {
+          onKill?.(displayedSessions[selected].name);
+          refresh();
+        }
         return;
       }
       if (input === 'c' && displayedSessions.length > 0) {
@@ -520,11 +544,11 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         setMode('config');
         return;
       }
-      if (key.upArrow) {
+      if (matchesKey(bindings['select-up'], input, key)) {
         setSelected((i) => (i - 1 + displayedSessions.length) % displayedSessions.length);
-      } else if (key.downArrow) {
+      } else if (matchesKey(bindings['select-down'], input, key)) {
         setSelected((i) => (i + 1) % displayedSessions.length);
-      } else if (key.return && displayedSessions.length > 0) {
+      } else if (matchesKey(bindings['attach'], input, key) && displayedSessions.length > 0) {
         onSelect?.(displayedSessions[selected]);
         exit();
       }
@@ -639,7 +663,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
           <Box flexDirection="column">
             <Box>
               <Text>{'  '}</Text>
-              <Text dimColor>{'NAME'.padEnd(22)}</Text>
+              <Text dimColor>{'NAME'.padEnd(cfg.ui.sessionNameWidth + 2)}</Text>
               <Text dimColor>{'WINS'.padEnd(7)}</Text>
               <Text dimColor>{'STATUS'.padEnd(8)}</Text>
               <Text dimColor>{'  LAST USED'}</Text>
@@ -649,7 +673,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
                 <Box>
                   <Text>{i === displaySelected ? '▸ ' : '  '}</Text>
                   <Text bold color={i === displaySelected ? 'cyan' : (s.attached ? 'green' : 'white')}>
-                    {(s.name.length > 20 ? s.name.slice(0, 17) + '...' : s.name).padEnd(22)}
+                    {(s.name.length > cfg.ui.sessionNameWidth ? s.name.slice(0, cfg.ui.sessionNameWidth - 3) + '...' : s.name).padEnd(cfg.ui.sessionNameWidth + 2)}
                   </Text>
                   <Text dimColor>
                     {`${s.windows} win${s.windows !== 1 ? 's' : ''}`.padEnd(7)}
@@ -721,6 +745,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
 
   // ── Render: help ──
   if (mode === 'help') {
+    const kb = cfg.keybindings;
     return (
       <Box flexDirection="column" paddingX={1}>
         <Box marginBottom={1}>
@@ -732,33 +757,33 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
 
         <Box flexDirection="column">
           <Text bold color="white">NAVIGATION</Text>
-          <Text>{'  '}<Text bold>↑↓</Text><Text dimColor>          Select session</Text></Text>
+          <Text>{'  '}<Text bold>{kb['select-up']}/{kb['select-down']}</Text><Text dimColor>          Select session</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">SESSION MANAGEMENT</Text></Box>
-          <Text>{'  '}<Text bold>↵</Text><Text dimColor>           Attach to selected session</Text></Text>
-          <Text>{'  '}<Text color="green" bold>n</Text><Text dimColor>           Create new session</Text></Text>
-          <Text>{'  '}<Text color="yellow" bold>r</Text><Text dimColor>           Rename selected session</Text></Text>
-          <Text>{'  '}<Text color="blue" bold>x</Text><Text dimColor>           Detach selected session</Text></Text>
-          <Text>{'  '}<Text color="red" bold>d</Text><Text dimColor>           Delete selected session</Text></Text>
+          <Text>{'  '}<Text bold>{kb['attach']}</Text><Text dimColor>           Attach to selected session</Text></Text>
+          <Text>{'  '}<Text color="green" bold>{kb['new']}</Text><Text dimColor>           Create new session</Text></Text>
+          <Text>{'  '}<Text color="yellow" bold>{kb['rename']}</Text><Text dimColor>           Rename selected session</Text></Text>
+          <Text>{'  '}<Text color="blue" bold>{kb['detach']}</Text><Text dimColor>           Detach selected session</Text></Text>
+          <Text>{'  '}<Text color="red" bold>{kb['kill']}</Text><Text dimColor>           Delete selected session</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">SEARCH & FILTER</Text></Box>
-          <Text>{'  '}<Text color="cyan" bold>/</Text><Text dimColor>           Search sessions by name</Text></Text>
-          <Text>{'  '}<Text color="yellow" bold>s</Text><Text dimColor>           Toggle favorite on selected session</Text></Text>
-          <Text>{'  '}<Text color="cyan" bold>f</Text><Text dimColor>           Filter list to favorites only</Text></Text>
+          <Text>{'  '}<Text color="cyan" bold>{kb['search']}</Text><Text dimColor>           Search sessions by name</Text></Text>
+          <Text>{'  '}<Text color="yellow" bold>{kb['favorite']}</Text><Text dimColor>           Toggle favorite on selected session</Text></Text>
+          <Text>{'  '}<Text color="cyan" bold>{kb['favorites-filter']}</Text><Text dimColor>           Filter list to favorites only</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">ADVANCED</Text></Box>
           <Text>{'  '}<Text color="magenta" bold>c</Text><Text dimColor>           Config — manage windows for selected session</Text></Text>
           <Text>{'  '}<Text color="white" bold>i</Text><Text dimColor>           Show session details (windows & panes)</Text></Text>
-          <Text>{'  '}<Text color="white" bold>R</Text><Text dimColor>           Refresh session list</Text></Text>
+          <Text>{'  '}<Text color="white" bold>{kb['refresh']}</Text><Text dimColor>           Refresh session list</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">BATCH OPERATIONS</Text></Box>
-          <Text>{'  '}<Text color="white" bold>Tab</Text><Text dimColor>         Mark / unmark session</Text></Text>
+          <Text>{'  '}<Text color="white" bold>{kb['batch-mark']}</Text><Text dimColor>         Mark / unmark session</Text></Text>
           <Text>{'  '}<Text color="blue" bold>X</Text><Text dimColor>           Batch detach all marked sessions</Text></Text>
           <Text>{'  '}<Text color="red" bold>D</Text><Text dimColor>           Batch delete all marked sessions</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">OTHER</Text></Box>
-          <Text>{'  '}<Text bold>q</Text><Text dimColor>           Quit tmuxtui</Text></Text>
-          <Text>{'  '}<Text bold>h</Text><Text dimColor>           Show this help screen</Text></Text>
+          <Text>{'  '}<Text bold>{kb['quit']}</Text><Text dimColor>           Quit tmuxtui</Text></Text>
+          <Text>{'  '}<Text bold>{kb['help']}</Text><Text dimColor>           Show this help screen</Text></Text>
 
           <Box marginTop={1}><Text bold color="white">PERSISTENCE</Text></Box>
           <Text dimColor>{'  Sessions live in tmux server memory and do NOT survive reboots.'}</Text>
@@ -965,7 +990,7 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
         <Box flexDirection="column">
           <Box>
             <Text>{'  '}</Text>
-            <Text dimColor>{'NAME'.padEnd(22)}</Text>
+            <Text dimColor>{'NAME'.padEnd(cfg.ui.sessionNameWidth + 2)}</Text>
             <Text dimColor>{'WINS'.padEnd(7)}</Text>
             <Text dimColor>{'STATUS'.padEnd(8)}</Text>
             <Text dimColor>{'  LAST USED'}</Text>
@@ -977,15 +1002,16 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
                 <Text>{favorites.has(s.name) ? '★' : ' '}</Text>
                 <Text>{i === safeSelected ? '▸' : ' '}</Text>
                 <Text bold color={i === safeSelected ? 'cyan' : (s.attached ? 'green' : 'white')}>
-                  {(s.name.length > 20 ? s.name.slice(0, 17) + '...' : s.name).padEnd(22)}
+                  {(s.name.length > cfg.ui.sessionNameWidth ? s.name.slice(0, cfg.ui.sessionNameWidth - 3) + '...' : s.name).padEnd(cfg.ui.sessionNameWidth + 2)}
                 </Text>
                 <Text dimColor>
                   {`${s.windows} win${s.windows !== 1 ? 's' : ''}`.padEnd(7)}
                 </Text>
                 <Text color="yellow">{s.attached ? 'attached' : '        '}</Text>
                 <Text dimColor>{'  '}{formatTime(s.lastAttached)}</Text>
+                {cfg.ui.showSessionId && <Text dimColor>{'  '}{s.sessionId}</Text>}
               </Box>
-              {s.path && (
+              {s.path && cfg.ui.showPath && (
                 <Text dimColor>{'    '}{s.path.replace(process.env.HOME || '', '~')}</Text>
               )}
             </Box>
@@ -996,24 +1022,24 @@ function SessionView({ interactive, favoritesOnly, onSelect, onCreate, onKill, o
       {interactive && (
         <Box marginTop={1} flexDirection="column">
             <Box>
-              <Text dimColor>↑↓ select | ↵ attach | </Text>
-              <Text color="green" bold>n</Text><Text dimColor> new | </Text>
-              <Text color="yellow" bold>r</Text><Text dimColor> rename | </Text>
+              <Text dimColor>{cfg.keybindings['select-up']}/{cfg.keybindings['select-down']} select | {cfg.keybindings['attach']} attach | </Text>
+              <Text color="green" bold>{cfg.keybindings['new']}</Text><Text dimColor> new | </Text>
+              <Text color="yellow" bold>{cfg.keybindings['rename']}</Text><Text dimColor> rename | </Text>
               <Text color="magenta" bold>c</Text><Text dimColor> config | </Text>
-              <Text dimColor>q quit | </Text>
-              <Text bold>h</Text><Text dimColor> help</Text>
+              <Text dimColor>{cfg.keybindings['quit']} quit | </Text>
+              <Text bold>{cfg.keybindings['help']}</Text><Text dimColor> help</Text>
             </Box>
             <Box>
-              <Text color="cyan" bold>/</Text><Text dimColor> search | </Text>
-              <Text color="yellow" bold>s</Text><Text dimColor> star | </Text>
-              <Text color="cyan" bold>f</Text><Text dimColor> filter | </Text>
-              <Text color="white" bold>R</Text><Text dimColor> refresh | </Text>
-              <Text color="blue" bold>x</Text><Text dimColor> detach | </Text>
-              <Text color="red" bold>d</Text><Text dimColor> delete | </Text>
+              <Text color="cyan" bold>{cfg.keybindings['search']}</Text><Text dimColor> search | </Text>
+              <Text color="yellow" bold>{cfg.keybindings['favorite']}</Text><Text dimColor> star | </Text>
+              <Text color="cyan" bold>{cfg.keybindings['favorites-filter']}</Text><Text dimColor> filter | </Text>
+              <Text color="white" bold>{cfg.keybindings['refresh']}</Text><Text dimColor> refresh | </Text>
+              <Text color="blue" bold>{cfg.keybindings['detach']}</Text><Text dimColor> detach | </Text>
+              <Text color="red" bold>{cfg.keybindings['kill']}</Text><Text dimColor> delete | </Text>
               <Text color="white" bold>i</Text><Text dimColor> info</Text>
             </Box>
             <Box>
-              <Text color="white" bold>Tab</Text><Text dimColor> mark | </Text>
+              <Text color="white" bold>{cfg.keybindings['batch-mark']}</Text><Text dimColor> mark | </Text>
               <Text color="blue" bold>X</Text><Text dimColor> batch detach | </Text>
               <Text color="red" bold>D</Text><Text dimColor> batch kill</Text>
             </Box>
@@ -1030,6 +1056,7 @@ export default function App({
   onRename,
   onDetach,
   favoritesOnly,
+  config,
 }: {
   onSelect?: (session: TmuxSession) => void;
   onCreate?: (name: string, path: string) => void;
@@ -1037,10 +1064,13 @@ export default function App({
   onRename?: (oldName: string, newName: string) => void;
   onDetach?: (name: string) => void;
   favoritesOnly?: boolean;
+  config?: ResolvedConfig;
 }) {
+  const resolvedConfig = config ?? loadConfig();
   return (
     <SessionView
       interactive={!!process.stdin.isTTY}
+      config={resolvedConfig}
       favoritesOnly={favoritesOnly}
       onSelect={onSelect}
       onCreate={onCreate}
