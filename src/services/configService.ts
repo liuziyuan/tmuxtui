@@ -155,7 +155,7 @@ const SPECIAL_KEYS: Record<string, string> = {
   delete: 'delete',
 };
 
-export function matchesKey(binding: string, input: string, key: Record<string, boolean>): boolean {
+export function matchesKey(binding: string, input: string, key: Record<string, boolean | string>): boolean {
   const inkProp = SPECIAL_KEYS[binding];
   if (inkProp) return !!key[inkProp];
   return input === binding;
