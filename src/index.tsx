@@ -5,7 +5,7 @@ import { render } from 'ink';
 import { execSync } from 'child_process';
 import { basename } from 'path';
 import App from './components/App.js';
-import { createSession, killSession, renameSession, detachSession, listSessions } from './services/tmuxService.js';
+import { createSession, killSession, renameSession, detachSession, listSessions, warmUpTmuxServer } from './services/tmuxService.js';
 import { loadConfig, sortSessions } from './services/configService.js';
 import type { TmuxSession } from './types.js';
 
@@ -71,6 +71,8 @@ if (args[0] === 'init' || args[0] === '-i') {
   }
   process.exit(0);
 }
+
+warmUpTmuxServer();
 
 if (args[0] === '.') {
   const sessionName = basename(process.cwd());

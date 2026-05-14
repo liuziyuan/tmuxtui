@@ -1,4 +1,6 @@
 import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import type { TmuxSession, TmuxWindow, TmuxPane } from '../types.js';
 
 export function listSessions(): TmuxSession[] {
@@ -236,6 +238,32 @@ export function moveWindow(srcSession: string, windowIndex: number, dstSession: 
   const safeSrc = srcSession.replace(/'/g, "'\\''");
   const safeDst = dstSession.replace(/'/g, "'\\''");
   execSync(`tmux move-window -s '${safeSrc}':${windowIndex} -t '${safeDst}':`, { stdio: 'pipe' });
+}
+
+function isTmuxServerRunning(): boolean {
+  try {
+    execSync('tmux info', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasTmuxPersistencePlugin(): boolean {
+  const home = process.env.HOME || '';
+  return existsSync(join(home, '.tmux/plugins/tmux-resurrect')) ||
+         existsSync(join(home, '.tmux/plugins/tmux-continuum'));
+}
+
+export function warmUpTmuxServer(): void {
+  if (isTmuxServerRunning()) return;
+  if (!hasTmuxPersistencePlugin()) return;
+  try {
+    execSync('tmux start-server', { stdio: 'ignore' });
+    execSync('sleep 1', { stdio: 'ignore' });
+  } catch {
+    // ignore
+  }
 }
 
 export function formatTime(epoch: number): string {
