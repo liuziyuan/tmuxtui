@@ -20,6 +20,7 @@ function attachToSession(name: string) {
 
 // ── Commands ──
 const args = process.argv.slice(2);
+const config = loadConfig();
 
 function showHelp() {
   console.log(`
@@ -64,7 +65,7 @@ if (args[0] === 'init' || args[0] === '-i') {
 
   try {
     createSession(sessionName, sessionPath);
-    saveTmuxSessions();
+    saveTmuxSessions(config.pluginsDir);
     console.log(`${sessionName} project has been added to tmuxtui`);
   } catch {
     console.error(`Failed to create session. A session with the same name may already exist.`);
@@ -73,7 +74,7 @@ if (args[0] === 'init' || args[0] === '-i') {
   process.exit(0);
 }
 
-warmUpTmuxServer();
+warmUpTmuxServer(config.pluginsDir);
 
 if (args[0] === '.') {
   const sessionName = basename(process.cwd());
@@ -93,8 +94,7 @@ if (args[0] === '.') {
 }
 
 if (args[0] === 'last' || args[0] === '-l') {
-  const cfg = loadConfig();
-  const sessions = sortSessions(listSessions(), cfg.defaultSort);
+  const sessions = sortSessions(listSessions(), config.defaultSort);
   if (sessions.length === 0) {
     console.error('No tmux sessions found');
     process.exit(1);
@@ -135,7 +135,6 @@ if (args[0] === 'update') {
 }
 
 // ── TUI mode ──
-const config = loadConfig();
 const favoritesOnly = args.includes('--favorites') || args.includes('-F');
 const filteredArgs = args.filter((a) => a !== '--favorites' && a !== '-F');
 
@@ -155,7 +154,7 @@ const instance = render(
     onSelect: (s: TmuxSession) => { state.session = s; },
     onCreate: (name: string, path: string) => {
       createSession(name, path);
-      saveTmuxSessions();
+      saveTmuxSessions(config.pluginsDir);
       state.newSession = name;
     },
     onKill: (name: string) => { killSession(name); },

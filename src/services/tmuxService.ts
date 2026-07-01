@@ -249,15 +249,21 @@ function isTmuxServerRunning(): boolean {
   }
 }
 
-function hasTmuxPersistencePlugin(): boolean {
-  const home = process.env.HOME || '';
-  return existsSync(join(home, '.tmux/plugins/tmux-resurrect')) ||
-         existsSync(join(home, '.tmux/plugins/tmux-continuum'));
+function hasTmuxPersistencePlugin(pluginsDir: string): boolean {
+  return existsSync(join(pluginsDir, 'tmux-resurrect')) ||
+         existsSync(join(pluginsDir, 'tmux-continuum'));
 }
 
-export function saveTmuxSessions(): void {
-  const home = process.env.HOME || '';
-  const saveScript = join(home, '.tmux/plugins/tmux-resurrect/scripts/save.sh');
+export function getPluginStatus(pluginsDir: string): { resurrect: boolean; continuum: boolean; tpm: boolean } {
+  return {
+    resurrect: existsSync(join(pluginsDir, 'tmux-resurrect')),
+    continuum: existsSync(join(pluginsDir, 'tmux-continuum')),
+    tpm: existsSync(join(pluginsDir, 'tpm')),
+  };
+}
+
+export function saveTmuxSessions(pluginsDir: string): void {
+  const saveScript = join(pluginsDir, 'tmux-resurrect/scripts/save.sh');
   if (!existsSync(saveScript)) return;
   try {
     execSync(`tmux run-shell '${saveScript}'`, { stdio: 'ignore' });
@@ -266,11 +272,10 @@ export function saveTmuxSessions(): void {
   }
 }
 
-export function warmUpTmuxServer(): void {
+export function warmUpTmuxServer(pluginsDir: string): void {
   if (isTmuxServerRunning()) return;
-  if (!hasTmuxPersistencePlugin()) return;
-  const home = process.env.HOME || '';
-  const restoreScript = join(home, '.tmux/plugins/tmux-resurrect/scripts/restore.sh');
+  if (!hasTmuxPersistencePlugin(pluginsDir)) return;
+  const restoreScript = join(pluginsDir, 'tmux-resurrect/scripts/restore.sh');
   if (!existsSync(restoreScript)) return;
   // `tmux start-server` alone exits immediately (exit-empty) without sourcing
   // .tmux.conf, so restore.sh (which needs $TMUX) never gets a real server to
