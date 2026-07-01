@@ -5,7 +5,7 @@ import { render } from 'ink';
 import { execSync } from 'child_process';
 import { basename } from 'path';
 import App from './components/App.js';
-import { createSession, killSession, renameSession, detachSession, listSessions, warmUpTmuxServer } from './services/tmuxService.js';
+import { createSession, killSession, renameSession, detachSession, listSessions, warmUpTmuxServer, saveTmuxSessions } from './services/tmuxService.js';
 import { loadConfig, sortSessions } from './services/configService.js';
 import type { TmuxSession } from './types.js';
 
@@ -64,6 +64,7 @@ if (args[0] === 'init' || args[0] === '-i') {
 
   try {
     createSession(sessionName, sessionPath);
+    saveTmuxSessions();
     console.log(`${sessionName} project has been added to tmuxtui`);
   } catch {
     console.error(`Failed to create session. A session with the same name may already exist.`);
@@ -154,6 +155,7 @@ const instance = render(
     onSelect: (s: TmuxSession) => { state.session = s; },
     onCreate: (name: string, path: string) => {
       createSession(name, path);
+      saveTmuxSessions();
       state.newSession = name;
     },
     onKill: (name: string) => { killSession(name); },

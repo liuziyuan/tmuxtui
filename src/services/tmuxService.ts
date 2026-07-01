@@ -255,14 +255,40 @@ function hasTmuxPersistencePlugin(): boolean {
          existsSync(join(home, '.tmux/plugins/tmux-continuum'));
 }
 
+export function saveTmuxSessions(): void {
+  const home = process.env.HOME || '';
+  const saveScript = join(home, '.tmux/plugins/tmux-resurrect/scripts/save.sh');
+  if (!existsSync(saveScript)) return;
+  try {
+    execSync(`tmux run-shell '${saveScript}'`, { stdio: 'ignore' });
+  } catch {
+    // ignore
+  }
+}
+
 export function warmUpTmuxServer(): void {
   if (isTmuxServerRunning()) return;
   if (!hasTmuxPersistencePlugin()) return;
+  const home = process.env.HOME || '';
+  const restoreScript = join(home, '.tmux/plugins/tmux-resurrect/scripts/restore.sh');
+  if (!existsSync(restoreScript)) return;
+  // `tmux start-server` alone exits immediately (exit-empty) without sourcing
+  // .tmux.conf, so restore.sh (which needs $TMUX) never gets a real server to
+  // run against. A placeholder session keeps the server alive and sources the
+  // config; restore.sh then recreates the saved sessions alongside it.
+  const placeholder = '__tmuxtui_warmup__';
   try {
-    execSync('tmux start-server', { stdio: 'ignore' });
+    execSync(`tmux new-session -d -s '${placeholder}'`, { stdio: 'ignore' });
+    execSync(`tmux run-shell '${restoreScript}'`, { stdio: 'ignore' });
     execSync('sleep 1', { stdio: 'ignore' });
   } catch {
     // ignore
+  } finally {
+    try {
+      execSync(`tmux kill-session -t '${placeholder}'`, { stdio: 'ignore' });
+    } catch {
+      // ignore
+    }
   }
 }
 
