@@ -20,6 +20,7 @@ export interface UserConfig {
   confirmBeforeKill?: boolean;
   autoAttachOnCreate?: boolean;
   refreshInterval?: number;
+  pluginsDir?: string;
   keybindings?: Partial<Record<KeyAction, string>>;
   ui?: {
     showPath?: boolean;
@@ -54,6 +55,7 @@ export type ResolvedConfig = {
   confirmBeforeKill: boolean;
   autoAttachOnCreate: boolean;
   refreshInterval: number;
+  pluginsDir: string;
   keybindings: Record<KeyAction, string>;
   ui: {
     showPath: boolean;
@@ -67,6 +69,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   confirmBeforeKill: true,
   autoAttachOnCreate: false,
   refreshInterval: 0,
+  pluginsDir: join(homedir(), '.tmux', 'plugins'),
   keybindings: DEFAULT_KEYBINDINGS,
   ui: {
     showPath: true,
@@ -93,6 +96,11 @@ function validateConfig(raw: unknown): Partial<UserConfig> {
   }
   if (typeof obj.refreshInterval === 'number' && obj.refreshInterval >= 0) {
     result.refreshInterval = Math.min(obj.refreshInterval, 300);
+  }
+  if (typeof obj.pluginsDir === 'string' && obj.pluginsDir.trim() !== '') {
+    result.pluginsDir = obj.pluginsDir.startsWith('~')
+      ? join(homedir(), obj.pluginsDir.slice(1))
+      : obj.pluginsDir;
   }
 
   if (typeof obj.keybindings === 'object' && obj.keybindings !== null && !Array.isArray(obj.keybindings)) {
@@ -125,6 +133,7 @@ function mergeConfig(partial: Partial<UserConfig>): ResolvedConfig {
     confirmBeforeKill: partial.confirmBeforeKill ?? DEFAULT_CONFIG.confirmBeforeKill,
     autoAttachOnCreate: partial.autoAttachOnCreate ?? DEFAULT_CONFIG.autoAttachOnCreate,
     refreshInterval: partial.refreshInterval ?? DEFAULT_CONFIG.refreshInterval,
+    pluginsDir: partial.pluginsDir ?? DEFAULT_CONFIG.pluginsDir,
     keybindings: { ...DEFAULT_KEYBINDINGS, ...(partial.keybindings ?? {}) },
     ui: { ...DEFAULT_CONFIG.ui, ...(partial.ui ?? {}) },
   };

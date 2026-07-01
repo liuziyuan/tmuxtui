@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
-import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime, getSessionDetail, moveWindow } from '../services/tmuxService.js';
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import { listSessions, listWindows, newWindow, renameWindow, killWindow, initPanes, PANE_LAYOUTS, formatTime, getSessionDetail, moveWindow, getPluginStatus } from '../services/tmuxService.js';
 import { loadFavorites, toggleFavorite } from '../services/favoritesService.js';
 import { loadConfig, matchesKey, sortSessions } from '../services/configService.js';
 import type { ResolvedConfig } from '../services/configService.js';
@@ -21,7 +21,9 @@ interface SessionViewProps {
 
 function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, onKill, onRename, onDetach }: SessionViewProps & { favoritesOnly?: boolean }) {
   const { exit } = useApp();
+  const { stdout } = useStdout();
   const cfg = config;
+  const [pluginStatus] = useState(() => getPluginStatus(cfg.pluginsDir));
 
   function fuzzyMatch(query: string, text: string): boolean {
     const q = query.toLowerCase();
@@ -34,6 +36,7 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
   }
   const [sessions, setSessions] = useState(() => sortSessions(listSessions(), cfg.defaultSort));
   const [selected, setSelected] = useState(0);
+  const [viewStart, setViewStart] = useState(0);
   const [mode, setMode] = useState<Mode>('list');
   const [inputValue, setinputValue] = useState('');
   const [inputValue2, setinputValue2] = useState('');
@@ -75,6 +78,21 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
   const displayedSessions = showFavoritesOnly
     ? sessions.filter((s) => favorites.has(s.name))
     : sessions;
+
+  const rows = stdout?.rows || 24;
+  const perItem = cfg.ui.showPath ? 3 : 2;
+  const pageSize = Math.max(1, Math.floor((rows - 8) / perItem));
+
+  useEffect(() => {
+    const len = displayedSessions.length;
+    const safe = Math.min(selected, Math.max(0, len - 1));
+    setViewStart((start) => {
+      let next = start;
+      if (safe < next) next = safe;
+      else if (safe >= next + pageSize) next = safe - pageSize + 1;
+      return Math.max(0, Math.min(next, Math.max(0, len - pageSize)));
+    });
+  }, [selected, pageSize, displayedSessions.length]);
 
   const refreshConfigWindows = () => {
     if (!configSession) return;
@@ -788,6 +806,12 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
           <Box marginTop={1}><Text bold color="white">PERSISTENCE</Text></Box>
           <Text dimColor>{'  Sessions live in tmux server memory and do NOT survive reboots.'}</Text>
           <Text dimColor>{'  Install tmux-resurrect + tmux-continuum to save/restore across restarts.'}</Text>
+
+          <Box marginTop={1}><Text bold color="white">PLUGINS</Text></Box>
+          <Text dimColor>{'  '}{cfg.pluginsDir}</Text>
+          <Text>{'  '}<Text color={pluginStatus.resurrect ? 'green' : 'red'}>{pluginStatus.resurrect ? '✓' : '✗'}</Text><Text dimColor>{' tmux-resurrect'}</Text></Text>
+          <Text>{'  '}<Text color={pluginStatus.continuum ? 'green' : 'red'}>{pluginStatus.continuum ? '✓' : '✗'}</Text><Text dimColor>{' tmux-continuum'}</Text></Text>
+          <Text>{'  '}<Text color={pluginStatus.tpm ? 'green' : 'red'}>{pluginStatus.tpm ? '✓' : '✗'}</Text><Text dimColor>{' tpm'}</Text></Text>
         </Box>
 
         {interactive && (
@@ -976,6 +1000,9 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
 
   // ── Render: list ──
   const safeSelected = Math.min(selected, Math.max(0, displayedSessions.length - 1));
+  const visibleSessions = displayedSessions.slice(viewStart, viewStart + pageSize);
+  const moreAbove = viewStart;
+  const moreBelow = Math.max(0, displayedSessions.length - viewStart - pageSize);
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -995,7 +1022,10 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
             <Text dimColor>{'STATUS'.padEnd(8)}</Text>
             <Text dimColor>{'  LAST USED'}</Text>
           </Box>
-          {displayedSessions.map((s, i) => (
+          {moreAbove > 0 && <Text dimColor>{`  ▲ ${moreAbove} more above`}</Text>}
+          {visibleSessions.map((s, vi) => {
+            const i = viewStart + vi;
+            return (
             <Box key={s.sessionId} flexDirection="column" marginBottom={1}>
               <Box>
                 <Text>{marked.has(s.name) ? '☑' : '☐'}</Text>
@@ -1015,7 +1045,9 @@ function SessionView({ interactive, config, favoritesOnly, onSelect, onCreate, o
                 <Text dimColor>{'    '}{s.path.replace(process.env.HOME || '', '~')}</Text>
               )}
             </Box>
-          ))}
+            );
+          })}
+          {moreBelow > 0 && <Text dimColor>{`  ▼ ${moreBelow} more below`}</Text>}
         </Box>
       )}
 
