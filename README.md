@@ -7,6 +7,7 @@ Interactive terminal UI for managing tmux sessions. Browse, create, rename, deta
 ## Features
 
 - **Session browser** — list all tmux sessions sorted by last used, with window count, working directory, and creation time
+- **Scrollable list** — long session lists page to fit your terminal height, with the cursor auto-scrolling and `▲/▼ N more` indicators
 - **Quick attach** — select and attach to any session instantly; auto sets terminal tab title to `[tmux] session_name`
 - **Create sessions** — new session with custom name and working directory
 - **Window manager** — press `c` to enter config mode: create, rename, delete windows, and initialize pane layouts
@@ -25,6 +26,10 @@ If you want sessions, windows, panes, and even some running programs to survive 
 - [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) — automatic periodic save and auto-restore on tmux start
 
 tmuxtui works seamlessly alongside both — they snapshot tmux's state to disk; tmuxtui reads whatever state the server currently has.
+
+If the tmux server isn't running when tmuxtui starts (e.g. right after a reboot) and it detects tmux-resurrect installed, it automatically starts the server and runs `restore.sh` so your saved sessions come back before the picker renders — no manual `prefix + Ctrl-r` needed.
+
+Press `h` in the TUI to see a **Plugins** status block showing whether tmux-resurrect, tmux-continuum, and tpm are installed, and which directory tmuxtui is checking (see `pluginsDir` below if yours isn't at the default location).
 
 ## Requirements
 
@@ -79,6 +84,7 @@ Create `~/.config/tmuxtui/config.json` to customize behavior:
   "confirmBeforeKill": true,
   "autoAttachOnCreate": false,
   "refreshInterval": 0,
+  "pluginsDir": "~/.tmux/plugins",
   "keybindings": {
     "quit": "escape",
     "new": "n",
@@ -100,6 +106,7 @@ Create `~/.config/tmuxtui/config.json` to customize behavior:
 | `confirmBeforeKill` | `true` | Show confirmation before killing sessions |
 | `autoAttachOnCreate` | `false` | Auto-attach after creating a new session |
 | `refreshInterval` | `0` | Auto-refresh interval in seconds (0 = disabled) |
+| `pluginsDir` | `"~/.tmux/plugins"` | Where tmuxtui looks for tmux-resurrect / tmux-continuum / tpm |
 | `ui.showPath` | `true` | Show session working directory |
 | `ui.showSessionId` | `false` | Show tmux session ID |
 | `ui.sessionNameWidth` | `20` | Session name column width (10-60) |

@@ -47,14 +47,20 @@ There are no tests or linter configured.
 `src/components/App.tsx` is a single `SessionView` component holding all UI state:
 
 - **Mode union**: `'list' | 'new' | 'rename' | 'confirm-kill' | 'config' | 'search' | 'detail' | 'confirm-batch-kill' | 'help'`
-- **Config sub-modes**: `'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes' | 'move'` (window management within a session)
+- **Config sub-modes**: `'list' | 'new' | 'rename' | 'confirm-delete' | 'init-panes' | 'move'` (window management within a session — unrelated to `configService`'s global config despite the shared name)
 - Keyboard input is gated on `process.stdin.isTTY` (passed as `interactive` prop)
 - All rendering is done inline in the component — no separate sub-components
+- **List pagination**: the session list is a scrolling viewport, not a full render. `pageSize` is derived from `useStdout().stdout.rows` (falls back to 24 rows when not a TTY); a `viewStart` state + `useEffect` keeps the cursor in view (sticky-edge scrolling) and renders `▲/▼ N more` hints when the list overflows the terminal.
 
 ### Services
 
 - **`src/services/tmuxService.ts`** — `execSync` wrappers for tmux commands (session, window, pane CRUD). All names/paths are single-quote-escaped before shell interpolation. Contains `PANE_LAYOUTS` (9 preset layouts with preview ASCII art and split instructions) and `initPanes()` which executes sequential `split-window` commands. Also exports `formatTime()` for epoch-to-readable conversion.
+  - `warmUpTmuxServer(pluginsDir)` — called once at CLI startup (`index.tsx`) when the tmux server isn't running. `tmux start-server` alone exits immediately (`exit-empty`) without sourcing `.tmux.conf`, so it instead starts a throwaway placeholder session (which does source the config), runs tmux-resurrect's `restore.sh` via `tmux run-shell`, then kills the placeholder — leaving only the restored sessions.
+  - `saveTmuxSessions(pluginsDir)` — runs tmux-resurrect's `save.sh`; called after `createSession` so new sessions survive a restart.
+  - `getPluginStatus(pluginsDir)` — `existsSync` check for `tmux-resurrect` / `tmux-continuum` / `tpm` subdirectories, surfaced in the `h` help screen's Plugins block.
+  - All three take `pluginsDir` from `ResolvedConfig.pluginsDir` (see configService below) rather than a hardcoded path.
 - **`src/services/favoritesService.ts`** — persists a `Set<string>` of favorited session names to `~/.config/tmuxtui/favorites.json`.
+- **`src/services/configService.ts`** — loads/validates/merges `~/.config/tmuxtui/config.json` into a `ResolvedConfig` (sort mode, keybindings, ui options, `pluginsDir`). `matchesKey()` maps configurable keybinding strings to Ink's `Key` object. Only the top-level `list` mode's keyboard dispatch in `App.tsx` reads from `cfg.keybindings`; sub-modes (search, detail, config/window-management, etc.) use hardcoded keys.
 
 ### Types
 

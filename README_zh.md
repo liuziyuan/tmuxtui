@@ -7,6 +7,7 @@ tmux 会话管理的交互式终端界面。无需记忆 tmux 命令，即可浏
 ## 功能
 
 - **会话浏览** — 按最近使用排序列出所有 tmux 会话，显示窗口数、工作目录和创建时间
+- **列表滚动分页** — 会话过多时按终端高度自动分页，光标自动跟随滚动，顶/底显示 `▲/▼ N more` 提示
 - **快速接入** — 选中会话后一键 attach，自动设置终端标签为 `[tmux] 会话名`
 - **创建会话** — 自定义名称和工作目录
 - **窗口管理** — 按 `c` 进入配置模式：新建、重命名、删除窗口，初始化 pane 布局
@@ -25,6 +26,10 @@ tmux session 存在于 `tmux server` 进程的内存中。**重启电脑会杀�
 - [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) —— 周期性自动保存，tmux 启动时自动还原
 
 tmuxtui 与上述两个插件天然兼容：它们负责把 tmux 状态落盘，tmuxtui 仅读取 server 当前状态。
+
+如果 tmuxtui 启动时发现 tmux server 没在跑（比如重启电脑后），且检测到已安装 tmux-resurrect，会自动拉起 server 并执行 `restore.sh` 恢复已保存的 session，无需再手动按 `prefix + Ctrl-r`，恢复完成后才渲染选择界面。
+
+在 TUI 里按 `h` 可以看到 **Plugins** 状态区块，显示 tmux-resurrect、tmux-continuum、tpm 各自是否已安装，以及 tmuxtui 当前检测的插件目录（如果你的插件不在默认路径，见下方 `pluginsDir` 配置）。
 
 ## 环境要求
 
@@ -79,6 +84,7 @@ tmuxtui
   "confirmBeforeKill": true,
   "autoAttachOnCreate": false,
   "refreshInterval": 0,
+  "pluginsDir": "~/.tmux/plugins",
   "keybindings": {
     "quit": "escape",
     "new": "n",
@@ -100,6 +106,7 @@ tmuxtui
 | `confirmBeforeKill` | `true` | 销毁会话前是否需要确认 |
 | `autoAttachOnCreate` | `false` | 创建会话后是否自动 attach |
 | `refreshInterval` | `0` | 自动刷新间隔（秒），0 = 关闭 |
+| `pluginsDir` | `"~/.tmux/plugins"` | tmuxtui 查找 tmux-resurrect / tmux-continuum / tpm 的目录 |
 | `ui.showPath` | `true` | 显示会话工作目录 |
 | `ui.showSessionId` | `false` | 显示 tmux 会话 ID |
 | `ui.sessionNameWidth` | `20` | 会话名列宽度（10-60） |
