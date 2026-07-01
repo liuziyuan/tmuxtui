@@ -20,6 +20,19 @@ npm run dev:pack                     # build + npm pack + extract (pre-publish c
 
 There are no tests or linter configured.
 
+## Before creating a PR
+
+`.github/workflows/publish.yml` only publishes to npm on push to `main` if `package.json`'s
+`version` differs from the version currently on npm (`npm view tmux-tui version`). If a PR
+contains a `feat`/`fix` meant to ship, bump `version` in `package.json` (and run
+`npm install --package-lock-only` to sync `package-lock.json`) before merging — otherwise the
+publish job silently skips and the change never reaches npm users. Use semver: `fix` → patch,
+`feat` → minor.
+
+`.github/workflows/ci.yml` also runs `npm audit --audit-level=high` on every PR — check it
+passes locally (`npm audit --audit-level=high`) before pushing; `npm audit fix` resolves most
+transitive-dependency findings without a manual `package.json` edit.
+
 ## Architecture
 
 **tmuxtui** is an Ink (React-for-terminals) TUI that manages tmux sessions. It wraps tmux CLI commands and renders an interactive session picker.
