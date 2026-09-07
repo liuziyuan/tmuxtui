@@ -65,7 +65,10 @@ if (args[0] === 'init' || args[0] === '-i') {
 
   try {
     createSession(sessionName, sessionPath);
-    saveTmuxSessions(config.pluginsDir);
+    console.log(`✔ Session '${sessionName}' created`);
+    if (saveTmuxSessions(config.pluginsDir)) {
+      console.log('⏳ Saving tmux snapshot in background (for restart-restore)...');
+    }
     console.log(`${sessionName} project has been added to tmuxtui`);
   } catch {
     console.error(`Failed to create session. A session with the same name may already exist.`);
