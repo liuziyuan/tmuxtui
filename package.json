@@ -1,6 +1,6 @@
 {
   "name": "tmux-tui",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Terminal UI for tmux session management",
   "type": "module",
   "bin": {
@@ -34,13 +34,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
+    "@types/react": "^18.3.31",
     "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {
-    "ink": "^6.8.0",
-    "react": "^19.0.0"
+    "ink": "^5.2.1",
+    "react": "^18.3.1"
   }
 }
