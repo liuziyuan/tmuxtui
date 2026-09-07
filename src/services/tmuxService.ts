@@ -262,13 +262,19 @@ export function getPluginStatus(pluginsDir: string): { resurrect: boolean; conti
   };
 }
 
-export function saveTmuxSessions(pluginsDir: string): void {
+// Returns true if a background snapshot save was started.
+// `run-shell -b` hands save.sh to the tmux server's background (same as
+// resurrect's own prefix + Ctrl-s binding). Without `-b` run-shell blocks
+// until the full snapshot finishes — 30s+ on large environments, since it
+// saves every session/pane serially, not just the newly created one.
+export function saveTmuxSessions(pluginsDir: string): boolean {
   const saveScript = join(pluginsDir, 'tmux-resurrect/scripts/save.sh');
-  if (!existsSync(saveScript)) return;
+  if (!existsSync(saveScript)) return false;
   try {
-    execSync(`tmux run-shell '${saveScript}'`, { stdio: 'ignore' });
+    execSync(`tmux run-shell -b '${saveScript}'`, { stdio: 'ignore' });
+    return true;
   } catch {
-    // ignore
+    return false;
   }
 }
 
